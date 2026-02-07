@@ -1,0 +1,35 @@
+:showtitle:
+:toc: left
+:icons: font
+
+= Lucid
+
+An infrastructure management tool for systems administrators, built to be easy
+to deploy and use.
+
+== Requirements
+
+This project requires a few development tools to be worked on:
+
+- `libpq` (`sudo dnf install -y pkgconfig(libpq)`) for Diesel, which depends on
+  a system PostgreSQL client library installation.
+- https://mise.jdx.dev[`mise`] for installing the Rust toolchain and various
+  other tools
+- A Docker runtime as well as `docker-compose` for running the application
+  locally as well as running integration tests.
+
+Once you've installed the above, you should be able to run the following to set
+install the rest of the toolchain:
+
+[source,shell]
+----
+# Trust the project directory
+$ mise trust
+
+# Install the toolchain
+$ mise install
+----
+
+== License
+
+This project uses the link:./LICENSE[Apache-2.0 License].
