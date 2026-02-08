@@ -12,6 +12,7 @@ table! {
     organisations (id) {
         id -> Uuid,
         name -> Text,
+        display_name -> Text,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

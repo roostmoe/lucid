@@ -1,7 +1,8 @@
 use diesel::{Selectable, Insertable, Queryable};
 use lucid_db_macros::Resource;
 use lucid_db_schema::schema::{organisation_users, users};
-use lucid_uuid_kinds::{OrganisationIdKind, UserIdKind};
+use lucid_types::dto::params::{self, UserCreateAuthMode};
+use lucid_uuid_kinds::{OrganisationIdKind, UserIdKind, UserIdUuid};
 use serde::{Deserialize, Serialize};
 
 use crate::DbTypedUuid;
@@ -22,4 +23,19 @@ pub struct User {
 pub struct OrganisationUser {
     pub user_id: DbTypedUuid<UserIdKind>,
     pub organisation_id: DbTypedUuid<OrganisationIdKind>,
+}
+
+impl User {
+    pub fn new(params: params::UserCreate) -> Self {
+        Self::new_with_id(UserIdUuid::new_v4(), params)
+    }
+
+    pub fn new_with_id(id: UserIdUuid, params: params::UserCreate) -> Self {
+        Self {
+            identity: UserIdentity::new(id),
+            email: params.email,
+            external_id: if let UserCreateAuthMode::External { external_id } =  params.auth_mode { Some(external_id) } else { None },
+            password_hash: None,
+        }
+    }
 }
