@@ -7,6 +7,17 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    console_sessions (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        token -> Text,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        last_seen_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     organisation_roles (id) {
         id -> Uuid,
         organisation_id -> Uuid,
@@ -62,7 +73,14 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(console_sessions -> users (user_id));
+diesel::joinable!(organisation_roles -> organisations (organisation_id));
+diesel::joinable!(organisation_users -> organisations (organisation_id));
+diesel::joinable!(organisation_users -> users (user_id));
+diesel::joinable!(role_bindings -> organisations (organisation_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
+    console_sessions,
     organisation_roles,
     organisation_users,
     organisations,

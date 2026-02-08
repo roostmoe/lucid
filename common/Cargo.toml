@@ -6,3 +6,8 @@ license.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+dropshot.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+parse-display.workspace = true
+uuid.workspace = true

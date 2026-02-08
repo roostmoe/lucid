@@ -4,6 +4,7 @@ pub use newtype_uuid::{GenericUuid, TypedUuid, TypedUuidTag, TypedUuidKind, TagE
 
 impl_typed_uuid_kinds! {
     kinds = {
+        ConsoleSessionId = {},
         OrganisationId = {},
         UserId = {},
         GroupId = {},

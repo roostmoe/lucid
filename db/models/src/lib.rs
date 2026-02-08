@@ -1,3 +1,4 @@
+mod console_session;
 mod organisation; 
 mod principal_type; 
 mod role; 
@@ -5,6 +6,7 @@ mod role_binding;
 mod typed_uuid;
 mod user;
 
+pub use console_session::*;
 pub use organisation::*; 
 pub use principal_type::*; 
 pub use role::*; 
