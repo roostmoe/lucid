@@ -1,0 +1,26 @@
+[package]
+name = "lucid-api"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+config.workspace = true
+http.workspace = true
+tokio.workspace = true
+serde.workspace = true
+dropshot.workspace = true
+tracing.workspace = true
+tracing-slog.workspace = true
+tracing-subscriber.workspace = true
+slog.workspace = true
+slog-async.workspace = true
+uuid.workspace = true
+
+lucid-auth.workspace = true
+lucid-common.workspace = true
+lucid-db-models.workspace = true
+lucid-db.workspace = true
+lucid-types.workspace = true
+lucid-uuid-kinds.workspace = true

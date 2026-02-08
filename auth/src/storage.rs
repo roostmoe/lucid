@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use lucid_common::api::error::Error;
 use lucid_db_models::{IdentityPrincipalType, RoleBinding};
 use uuid::Uuid;
@@ -6,6 +7,7 @@ use crate::context::OpContext;
 
 /// Storage operations that require an [`OpContext`] (and therefore authz
 /// checks).
+#[async_trait]
 pub trait Storage: Send + Sync {
     async fn role_bind_list_for(
         &self,

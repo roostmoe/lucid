@@ -3,11 +3,12 @@ use lucid_db_macros::Resource;
 use lucid_db_schema::schema::{organisation_users, users};
 use lucid_types::dto::params::{self, UserCreateAuthMode};
 use lucid_uuid_kinds::{OrganisationIdKind, UserIdKind, UserIdUuid};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::DbTypedUuid;
 
-#[derive(Clone, Debug, Queryable, Insertable, Selectable, Resource, Serialize, Deserialize)]
+#[derive(Clone, Debug, Queryable, Insertable, Selectable, Resource, Serialize, Deserialize, JsonSchema)]
 #[diesel(table_name = users)]
 #[resource(uuid_kind = UserIdKind, deletable = false)]
 pub struct User {
@@ -19,7 +20,7 @@ pub struct User {
     pub system_admin: bool,
 }
 
-#[derive(Clone, Debug, Queryable, Insertable, Selectable, Serialize, Deserialize)]
+#[derive(Clone, Debug, Queryable, Insertable, Selectable, Serialize, Deserialize, JsonSchema)]
 #[diesel(table_name = organisation_users)]
 pub struct OrganisationUser {
     pub user_id: DbTypedUuid<UserIdKind>,

@@ -1,0 +1,9 @@
+#
+# Lucid configuration file
+#
+
+# The URL of the Postgres database to connect to. This is required.
+database_url = "postgres://postgres:postgres@localhost/postgres"
+
+# The bind address and port for the API server to listen on. This is required.
+bind_address = "0.0.0.0:8080"

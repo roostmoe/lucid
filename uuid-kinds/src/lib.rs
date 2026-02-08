@@ -3,6 +3,16 @@ use newtype_uuid_macros::impl_typed_uuid_kinds;
 pub use newtype_uuid::{GenericUuid, TypedUuid, TypedUuidTag, TypedUuidKind, TagError, ParseError};
 
 impl_typed_uuid_kinds! {
+    settings = {
+        schemars08 = {
+            rust_type = {
+                crate = "lucid-uuid-uinds",
+                version = "*",
+                path = "lucid_uuid_kinds"
+            }
+        }
+    },
+
     kinds = {
         ConsoleSessionId = {},
         OrganisationId = {},

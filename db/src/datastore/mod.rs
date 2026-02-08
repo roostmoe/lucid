@@ -1,10 +1,11 @@
 use diesel_async::{
-    pooled_connection::{AsyncDieselConnectionManager, bb8::Pool},
-    AsyncPgConnection,
+    AsyncPgConnection, RunQueryDsl, pooled_connection::{AsyncDieselConnectionManager, bb8::Pool}
 };
 
-pub mod tenant;
 pub mod authz;
+pub mod sessions;
+pub mod tenant;
+pub mod users;
 
 pub struct DataStore {
     pool: Pool<AsyncPgConnection>,
@@ -16,5 +17,11 @@ impl DataStore {
         let pool = Pool::builder().build(config).await?;
 
         Ok(Self { pool })
+    }
+
+    pub async fn ping(&self) -> anyhow::Result<()> {
+        let mut conn = self.pool.get().await?;
+        diesel::sql_query("SELECT 1").execute(&mut conn).await?;
+        Ok(())
     }
 }

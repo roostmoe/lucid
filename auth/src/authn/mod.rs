@@ -4,7 +4,7 @@ use lucid_uuid_kinds::{OrganisationIdUuid, UserIdUuid};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-mod external;
+pub mod external;
 
 /// Describes how the actor performing the current operation is authenticated
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -130,6 +130,28 @@ impl Debug for Actor {
 pub struct ConsoleSession {
     pub console_session: lucid_db_models::ConsoleSession,
     pub organisation_id: OrganisationIdUuid,
+}
+
+impl external::session_cookie::Session for ConsoleSession {
+    fn id(&self) -> lucid_uuid_kinds::ConsoleSessionIdUuid {
+        lucid_types::identity::Resource::id(&self.console_session)
+    }
+
+    fn user_id(&self) -> UserIdUuid {
+        self.console_session.user_id.into()
+    }
+
+    fn organisation_id(&self) -> OrganisationIdUuid {
+        self.organisation_id
+    }
+
+    fn last_seen_at(&self) -> chrono::DateTime<chrono::Utc> {
+        self.console_session.last_seen_at
+    }
+
+    fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
+        lucid_types::identity::Resource::created_at(&self.console_session)
+    }
 }
 
 pub use lucid_types::authn::SchemeName;

@@ -41,7 +41,10 @@ pub enum Error {
 
 impl Error {
     pub fn internal_anyhow(message: String, source: anyhow::Error) -> Self {
-        Self::InternalAnyhow { internal_message: message, source }
+        Self::InternalAnyhow {
+            internal_message: message,
+            source,
+        }
     }
 }
 
@@ -99,7 +102,9 @@ impl From<Error> for HttpError {
             } => HttpError::for_not_found(error_code, internal_message),
 
             Error::Internal { internal_message } => HttpError::for_internal_error(internal_message),
-            Error::InternalAnyhow { internal_message, .. } => HttpError::for_internal_error(internal_message),
+            Error::InternalAnyhow {
+                internal_message, ..
+            } => HttpError::for_internal_error(internal_message),
         }
     }
 }

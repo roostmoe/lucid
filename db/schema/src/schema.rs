@@ -14,6 +14,7 @@ diesel::table! {
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
         last_seen_at -> Timestamptz,
+        organisation_id -> Uuid,
     }
 }
 
@@ -68,12 +69,13 @@ diesel::table! {
         email -> Text,
         external_id -> Nullable<Text>,
         password_hash -> Nullable<Text>,
-        system_admin -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        system_admin -> Bool,
     }
 }
 
+diesel::joinable!(console_sessions -> organisations (organisation_id));
 diesel::joinable!(console_sessions -> users (user_id));
 diesel::joinable!(organisation_roles -> organisations (organisation_id));
 diesel::joinable!(organisation_users -> organisations (organisation_id));

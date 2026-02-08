@@ -190,7 +190,7 @@ fn build_identity(
 
     quote! {
         #[doc = #identity_doc]
-        #[derive(Clone, Debug, PartialEq, Selectable, Queryable, Insertable, serde::Serialize, serde::Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Selectable, Queryable, Insertable, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
         #[diesel(table_name = #table_name)]
         pub struct #identity_name {
             pub id: #db_uuid_ty,
