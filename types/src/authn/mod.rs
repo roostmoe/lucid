@@ -3,6 +3,7 @@ use std::fmt;
 use anyhow::anyhow;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 
+pub mod cookies;
 
 /// Identifies a particular external authentication scheme.
 ///

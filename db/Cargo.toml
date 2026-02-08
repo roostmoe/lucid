@@ -5,3 +5,14 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+bb8.workspace = true
+diesel.workspace = true
+diesel-async.workspace = true
+lucid-auth.workspace = true
+lucid-common.workspace = true
+lucid-db-models.workspace = true
+lucid-db-schema.workspace = true
+lucid-types.workspace = true
+lucid-uuid-kinds.workspace = true

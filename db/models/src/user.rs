@@ -1,4 +1,4 @@
-use diesel::{Selectable, Insertable, Queryable};
+use diesel::{Insertable, Queryable, Selectable};
 use lucid_db_macros::Resource;
 use lucid_db_schema::schema::{organisation_users, users};
 use lucid_types::dto::params::{self, UserCreateAuthMode};
@@ -16,6 +16,7 @@ pub struct User {
     pub email: String,
     pub external_id: Option<String>,
     pub password_hash: Option<String>,
+    pub system_admin: bool,
 }
 
 #[derive(Clone, Debug, Queryable, Insertable, Selectable, Serialize, Deserialize)]
@@ -34,8 +35,13 @@ impl User {
         Self {
             identity: UserIdentity::new(id),
             email: params.email,
-            external_id: if let UserCreateAuthMode::External { external_id } =  params.auth_mode { Some(external_id) } else { None },
+            external_id: if let UserCreateAuthMode::External { external_id } = params.auth_mode {
+                Some(external_id)
+            } else {
+                None
+            },
             password_hash: None,
+            system_admin: false,
         }
     }
 }

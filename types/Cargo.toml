@@ -6,7 +6,12 @@ license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+async-trait.workspace = true
 chrono.workspace = true
+cookie.workspace = true
+dropshot.workspace = true
+http.workspace = true
+newtype_derive.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_with.workspace = true

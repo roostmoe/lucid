@@ -68,6 +68,7 @@ diesel::table! {
         email -> Text,
         external_id -> Nullable<Text>,
         password_hash -> Nullable<Text>,
+        system_admin -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
