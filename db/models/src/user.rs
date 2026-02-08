@@ -1,24 +1,25 @@
-use chrono::{DateTime, Utc};
-use diesel::{Insertable, Selectable, Queryable};
-use lucid_db_schema::schema::{user_password_hashes, users};
+use diesel::{Selectable, Insertable, Queryable};
+use lucid_db_macros::Resource;
+use lucid_db_schema::schema::{organisation_users, users};
+use lucid_uuid_kinds::{OrganisationIdKind, UserIdKind};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-#[derive(Debug, Deserialize, Serialize, Selectable, Queryable, Insertable)]
+use crate::DbTypedUuid;
+
+#[derive(Clone, Debug, Queryable, Insertable, Selectable, Resource, Serialize, Deserialize)]
 #[diesel(table_name = users)]
+#[resource(uuid_kind = UserIdKind, deletable = false)]
 pub struct User {
-    pub id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub deleted_at: Option<DateTime<Utc>>,
-
+    #[diesel(embed)]
+    pub identity: UserIdentity,
     pub email: String,
-    pub display_name: String,
+    pub external_id: Option<String>,
+    pub password_hash: Option<String>,
 }
 
-#[derive(Selectable, Insertable, PartialEq, Debug)]
-#[diesel(table_name = user_password_hashes)]
-pub struct UserPasswordHash {
-    pub user_id: Uuid,
-    pub hash: String,
+#[derive(Clone, Debug, Queryable, Insertable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = organisation_users)]
+pub struct OrganisationUser {
+    pub user_id: DbTypedUuid<UserIdKind>,
+    pub organisation_id: DbTypedUuid<OrganisationIdKind>,
 }
