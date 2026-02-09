@@ -58,6 +58,8 @@ diesel::table! {
         organisation_id -> Uuid,
         principal_id -> Uuid,
         principal_type -> IdentityPrincipalType,
+        resource_id -> Uuid,
+        resource_type -> Text,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -90,3 +92,16 @@ diesel::allow_tables_to_appear_in_same_query!(
     role_bindings,
     users,
 );
+
+diesel::table! {
+    hosts (id, organisation_id) {
+        id -> Uuid,
+        organisation_id -> Uuid,
+
+        name -> Text,
+
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        deleted_at -> Nullable<Timestamptz>,
+    }
+}

@@ -75,13 +75,11 @@ impl From<Error> for HttpError {
                 headers: None,
             },
 
-            Error::Forbidden {
-                internal_message, ..
-            } => HttpError {
+            Error::Forbidden => HttpError {
                 status_code: dropshot::ErrorStatusCode::FORBIDDEN,
                 error_code: Some(String::from("Forbidden")),
                 external_message: String::from("insufficient permissions"),
-                internal_message,
+                internal_message: "Insufficient permissions".into(),
                 headers: None,
             },
 

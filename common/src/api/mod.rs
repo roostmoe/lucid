@@ -18,9 +18,13 @@ pub mod error;
 )]
 #[display(style = "kebab-case")]
 pub enum ResourceType {
+    // Directory/IAM
     Organisation,
     OrganisationUser,
     OrganisationRole,
     RoleBinding,
     User,
+
+    // Inventory
+    Host,
 }

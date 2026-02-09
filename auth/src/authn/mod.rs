@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use lucid_uuid_kinds::{OrganisationIdUuid, UserIdUuid};
+use lucid_uuid_kinds::{GenericUuid, OrganisationIdUuid, UserIdUuid};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -110,6 +110,17 @@ impl Actor {
     pub fn organisation_id(&self) -> Option<OrganisationIdUuid> {
         match self {
             Actor::OrganisationUser { organisation_id, .. } => Some(*organisation_id),
+        }
+    }
+
+    pub fn id_and_type_for_role_binding(
+        &self,
+    ) -> Option<(Uuid, lucid_db_models::IdentityPrincipalType)> {
+        match &self {
+            Actor::OrganisationUser { user_id, .. } => Some((
+                user_id.into_untyped_uuid(),
+                lucid_db_models::IdentityPrincipalType::User,
+            )),
         }
     }
 }

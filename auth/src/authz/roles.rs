@@ -4,7 +4,7 @@ use lucid_common::api::{ResourceType, error::Error};
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::{authn, context::OpContext};
+use crate::{authn, authz::ApiResource, context::OpContext};
 
 #[derive(Clone, Debug)]
 pub struct RoleSet {
@@ -111,18 +111,18 @@ async fn load_directly_attached_roles(
         // ... then fetch all the roles for this user that are associated with
         // this resource.
         trace!(
-            actor = actor,
-            resource_type = resource_type,
+            actor = ?actor,
+            resource_type = ?resource_type,
             resource_id = resource_id.to_string(),
             "loading roles"
         );
 
         let Some((identity_id, identity_type)) =
-            actor.id_and_type_for_role_assignment()
+            actor.id_and_type_for_role_binding()
         else {
             trace!(
-                actor = actor,
-                resource_type = resource_type,
+                actor = ?actor,
+                resource_type = ?resource_type,
                 resource_id = resource_id.to_string(),
                 "actor cannot have roles",
             );
@@ -131,7 +131,7 @@ async fn load_directly_attached_roles(
 
         let roles = opctx
             .datastore()
-            .role_asgn_list_for(
+            .role_bind_list_for(
                 opctx,
                 identity_type,
                 identity_id,
@@ -141,9 +141,9 @@ async fn load_directly_attached_roles(
             .await?;
 
         // Add each role to the output roleset.
-        for role_asgn in roles {
-            assert_eq!(resource_type.to_string(), role_asgn.resource_type);
-            roleset.insert(resource_type, resource_id, &role_asgn.role_name);
+        for role_binding in roles {
+            assert_eq!(resource_type.to_string(), role_binding.resource_type);
+            roleset.insert(resource_type, resource_id, &role_binding.role_name);
         }
     }
 

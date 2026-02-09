@@ -17,4 +17,6 @@ pub struct RoleBinding {
     pub organisation_id: DbTypedUuid<OrganisationIdKind>,
     pub principal_id: Uuid,
     pub principal_type: IdentityPrincipalType,
+    pub resource_id: Uuid,
+    pub resource_type: String,
 }

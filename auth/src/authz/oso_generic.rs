@@ -36,7 +36,7 @@ impl OsoInitBuilder {
     pub fn register_class(
         mut self,
         c: oso::Class,
-    ) -> Result<self, anyhow::Error> {
+    ) -> Result<Self, anyhow::Error> {
         info!(class = &c.name, "registering Oso class");
         let name = c.name.clone();
         let new_element = self.class_names.insert(name.clone());
@@ -83,7 +83,7 @@ pub fn make_lucid_oso() -> Result<OsoInit, anyhow::Error> {
         oso_builder = oso_builder.register_class_with_snippet(init)?;
     }
 
-    oso_builder.build();
+    oso_builder.build()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

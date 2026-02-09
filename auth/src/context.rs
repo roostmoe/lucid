@@ -1,9 +1,8 @@
-use std::{collections::BTreeMap, sync::Arc, time::{Instant, SystemTime}};
+use std::{collections::BTreeMap, fmt::Debug, sync::Arc, time::{Instant, SystemTime}};
 
 use lucid_common::api::error::Error;
-use lucid_uuid_kinds::OrganisationIdUuid;
 
-use crate::{authn, storage::Storage};
+use crate::{authn, authz::AuthorizedResource, storage::Storage};
 use crate::authz;
 
 // ---------------------------------------------------------------------------
@@ -17,8 +16,8 @@ use crate::authz;
 /// — not at the HTTP layer.
 pub struct OpContext {
     pub authn: Arc<authn::Context>,
-    pub authz: authz::Context,
 
+    authz: authz::Context,
     created_instant: Instant,
     created_walltime: SystemTime,
     metadata: BTreeMap<String, String>,
@@ -34,66 +33,59 @@ pub enum OpKind {
 }
 
 impl OpContext {
-    // ------------------------------------------------------------------
-    // Constructors
-    // ------------------------------------------------------------------
-
-    /// Create an [`OpContext`] for an external API request scoped to a specific
-    /// organisation.
-    pub async fn for_external_api(
-        authn: Arc<authn::Context>,
-        organisation_id: OrganisationIdUuid,
-        storage: Arc<dyn authz::AuthzStorage>,
+    pub fn new<E>(
+        auth_fn: impl FnOnce() -> Result<(Arc<authn::Context>, authz::Context), E>,
         metadata_loader: impl FnOnce(&mut BTreeMap<String, String>),
-    ) -> Result<Self, Error> {
-        let authz = authz::Context::load_for_actor(
-            authn.actor(),
-            Some(organisation_id),
-            storage,
-        )
-        .await?;
-
-        let mut metadata = Self::metadata_for_authn(&authn);
+        kind: OpKind,
+    ) -> Result<Self, E> {
+        let created_instant = Instant::now();
+        let created_walltime = SystemTime::now();
+        let (authn, authz) = auth_fn()?;
+        let mut metadata = OpContext::metadata_for_authn(&authn);
         metadata_loader(&mut metadata);
 
-        Ok(Self {
-            authn,
+        Ok(OpContext {
             authz,
-            created_instant: Instant::now(),
-            created_walltime: SystemTime::now(),
+            authn,
+            created_instant,
+            created_walltime,
             metadata,
-            kind: OpKind::ExternalApiRequest,
+            kind,
         })
     }
 
-    /// Create an [`OpContext`] for a fleet-level operation with no org scope
-    /// (e.g. listing all organisations).
-    ///
-    /// Only `system_admin` users will pass permission checks for fleet-scoped
-    /// permissions.
-    pub async fn for_fleet_operation(
-        authn: Arc<authn::Context>,
-        storage: Arc<dyn authz::AuthzStorage>,
+    pub async fn new_async<E>(
+        auth_fut: impl std::future::Future<
+            Output = Result<(Arc<authn::Context>, authz::Context), E>,
+        >,
         metadata_loader: impl FnOnce(&mut BTreeMap<String, String>),
-    ) -> Result<Self, Error> {
-        let authz = authz::Context::load_for_actor(
-            authn.actor(),
-            None,
-            storage,
-        )
-        .await?;
-
-        let mut metadata = Self::metadata_for_authn(&authn);
+        kind: OpKind,
+    ) -> Result<Self, E> {
+        let created_instant = Instant::now();
+        let created_walltime = SystemTime::now();
+        let (authn, authz) = auth_fut.await?;
+        let mut metadata = OpContext::metadata_for_authn(&authn);
         metadata_loader(&mut metadata);
 
-        Ok(Self {
-            authn,
+        Ok(OpContext {
             authz,
-            created_instant: Instant::now(),
-            created_walltime: SystemTime::now(),
+            authn,
+            created_instant,
+            created_walltime,
             metadata,
-            kind: OpKind::InternalApiRequest,
+            kind,
         })
+    }
+
+    pub async fn authorize<Resource>(
+        &self,
+        action: authz::Action,
+        resource: &Resource,
+    ) -> Result<(), Error>
+    where
+        Resource: AuthorizedResource + Debug + Clone,
+    {
+        self.authz.authorize(self, action, resource.clone()).await
     }
 
     /// Create an [`OpContext`] for a background job that inherits the
@@ -126,23 +118,6 @@ impl OpContext {
             kind: OpKind::Test,
         }
     }
-
-    // ------------------------------------------------------------------
-    // Authorisation helpers
-    // ------------------------------------------------------------------
-
-    /// Check that the actor has the given permission. Returns `Err(Forbidden)`
-    /// if they don't.
-    pub fn authorize(
-        &self,
-        permission: &authz::Permission,
-    ) -> Result<(), Error> {
-        self.authz.require_permission(permission)
-    }
-
-    // ------------------------------------------------------------------
-    // Metadata
-    // ------------------------------------------------------------------
 
     fn metadata_for_authn(
         authn: &authn::Context,
@@ -191,7 +166,7 @@ impl OpContext {
     }
 
     pub fn datastore(&self) -> &Arc<dyn Storage> {
-        self.authz.storage()
+        self.authz.datastore()
     }
 }
 

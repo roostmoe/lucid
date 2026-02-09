@@ -121,7 +121,7 @@ fn do_authz_resource(
 ) -> Result<TokenStream, syn::Error> {
     let input = serde_tokenstream::from_tokenstream::<Input>(&raw_input)?;
     let resource_name = format_ident!("{}", input.name);
-    let parent_resource_name = format_ident!("{}", input.name);
+    let parent_resource_name = format_ident!("{}", input.parent);
     let parent_as_snake = heck::AsSnakeCase(&input.parent).to_string();
     let primary_key_type = input.primary_key.0.external();
     let input_key_type = input.input_key.as_deref().unwrap_or(primary_key_type);
@@ -205,7 +205,7 @@ fn do_authz_resource(
 
     Ok(quote! {
         #[doc = #doc_struct]
-        #[derive(Clone, Debug, ::serde::Serialize, ::serde::Deserialize)]
+        #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct #resource_name {
             parent: #parent_resource_name,
             key: #primary_key_type,
@@ -223,7 +223,7 @@ fn do_authz_resource(
             ) -> #resource_name {
                 #resource_name {
                     parent,
-                    key.into(),
+                    key: key.into(),
                     lookup_type,
                 }
             }
@@ -278,5 +278,27 @@ fn do_authz_resource(
                     )
             }
         }
+
+        impl ApiResource for #resource_name {
+            fn parent(&self) -> Option<&dyn AuthorizedResource> {
+                Some(&self.parent)
+            }
+
+            fn resource_type(&self) -> ResourceType {
+                ResourceType::#resource_name
+            }
+
+            fn lookup_type(&self) -> &LookupType {
+                &self.lookup_type
+            }
+
+            fn as_resource_with_roles(
+                &self,
+            ) -> Option<&dyn ApiResourceWithRoles> {
+                #as_roles_body
+            }
+        }
+
+        #api_resource_roles_trait
     })
 }

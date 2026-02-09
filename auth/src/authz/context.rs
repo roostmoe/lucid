@@ -1,6 +1,5 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use anyhow::bail;
 use futures::future::BoxFuture;
 use lucid_common::api::error::Error;
 use oso::{Oso, OsoError};
@@ -16,14 +15,14 @@ pub struct Authz {
 impl Authz {
     pub(crate) fn is_allowed<R>(
         &self,
-        actor: AnyActor,
+        actor: &AnyActor,
         action: Action,
         resource: &R,
     ) -> Result<bool, OsoError>
     where
         R: oso::ToPolar + Clone,
     {
-        self.oso.is_allowed(actor.clone(), action, resource.clone());
+        self.oso.is_allowed(actor.clone(), action, resource.clone())
     }
 
     pub fn into_class_names(self) -> BTreeSet<String> {
@@ -54,7 +53,10 @@ impl Context {
     {
         let class_name = &resource.polar_class().name;
         if !self.authz.class_names.contains(class_name) {
-            bail!("attempted authz check on unregistered resource: {:?}", class_name);
+            return Err(Error::internal_error(&format!(
+                "attempted authz check on unregistered resource: {:?}",
+                class_name,
+            )));
         }
 
         let mut roles = RoleSet::new();

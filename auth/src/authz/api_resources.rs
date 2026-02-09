@@ -1,12 +1,25 @@
-use std::sync::LazyLock;
-
 use futures::{FutureExt, future::BoxFuture};
 use lucid_auth_macros::authz_resource;
 use lucid_common::api::{ResourceType, error::{Error, LookupType}};
+use lucid_uuid_kinds::OrganisationIdUuid;
+use oso::PolarClass;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{authn, authz::{Action, actor::AnyActor, context::{AuthorizedResource, Authz}, roles::{RoleSet, load_roles_for_resource_tree}}, context::OpContext};
+use crate::{
+    authn,
+    authz::{
+        Action, 
+        AnyActor,
+        AuthenticatedActor,
+        AuthorizedResource,
+        Authz,
+        RoleSet,
+        oso_generic::Init,
+        roles::load_roles_for_resource_tree,
+    },
+    context::OpContext,
+};
 
 pub trait ApiResource:
     std::fmt::Debug + oso::ToPolar + Send + Sync + 'static
@@ -28,7 +41,7 @@ pub trait ApiResource:
     /// Returns an error as though this resource were not found, suitable for
     /// use when an actor should not be able to see that this resource exists.
     fn not_found(&self) -> Error {
-        self.lookup_type().clone().into_not_found(self.resource_type());
+        self.lookup_type().clone().into_not_found(self.resource_type())
     }
 }
 
@@ -84,13 +97,13 @@ where
         actor: AnyActor,
         action: Action,
     ) -> Error {
-        if action == Action::Read {
+        if action == Action::Get {
             return self.not_found();
         }
 
         // If the user failed an authz check, and they can't even read this
         // resource, then we should produce a 404 rather than a 401/403.
-        match authz.is_allowed(&actor, Action::Read, self) {
+        match authz.is_allowed(&actor, Action::Get, self) {
             Err(error) => Error::internal_error(&format!(
                 "failed to compute read authorization to determine visibility: \
                 {:#}",
@@ -106,17 +119,55 @@ where
     }
 }
 
-authz_resource! {
-    name = "Organization",
-    parent = "None",
-    primary_key = { uuid_kind = OrganisationIdKind },
-    roles_allowed = true,
-    polar_snippet = Custom,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Organisation {
+    key: OrganisationIdUuid,
+    lookup_type: LookupType,
+}
+
+impl Organisation {
+    pub fn id(&self) -> OrganisationIdUuid {
+        self.key.clone().into()
+    }
+}
+
+impl Eq for Organisation {}
+impl PartialEq for Organisation {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl PolarClass for Organisation {
+    fn get_polar_class_builder() -> oso::ClassBuilder<Self> {
+        oso::Class::builder()
+            .with_equality_check()
+    }
+}
+
+impl ApiResource for Organisation {
+    fn parent(&self) -> Option<&dyn AuthorizedResource> {
+        None
+    }
+
+    fn resource_type(&self) -> ResourceType {
+        ResourceType::Organisation
+    }
+
+    fn lookup_type(&self) -> &LookupType {
+        &self.lookup_type
+    }
+
+    fn as_resource_with_roles(
+        &self,
+    ) -> Option<&dyn ApiResourceWithRoles> {
+        None
+    }
 }
 
 authz_resource! {
-    name = "Host",
-    parent = "Organisation",
+    name = Host,
+    parent = Organisation,
     primary_key = Uuid,
     roles_allowed = true,
     polar_snippet = InTenant,

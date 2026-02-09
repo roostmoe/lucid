@@ -12,9 +12,7 @@ pub use context::Authz;
 pub use context::Context;
 
 mod oso_generic;
-// pub use oso_generic::Action;
-// pub use oso_generic::DATABASE;
-// pub use oso_generic::Database;
+pub use oso_generic::Action;
 
 mod roles;
 pub use roles::RoleSet;

@@ -1,3 +1,7 @@
+use lucid_common::api::ResourceType;
+use lucid_uuid_kinds::GenericUuid;
+use uuid::Uuid;
+
 use crate::{authn, authz::roles::RoleSet};
 
 #[derive(Clone, Debug)]
@@ -34,7 +38,18 @@ pub struct AuthenticatedActor {
     roles: RoleSet,
 }
 
-impl AuthenticatedActor {}
+impl AuthenticatedActor {
+    /// Returns whether this actor has explicitly been granted the given role
+    /// for the given resource
+    pub fn has_role_resource(
+        &self,
+        resource_type: ResourceType,
+        resource_id: Uuid,
+        role: &str,
+    ) -> bool {
+        self.roles.has_role(resource_type, resource_id, role)
+    }
+}
 
 impl PartialEq for AuthenticatedActor {
     fn eq(&self, other: &Self) -> bool {
@@ -53,10 +68,10 @@ impl oso::PolarClass for AuthenticatedActor {
                     authn::Actor::OrganisationUser { .. } => true,
                 }
             })
-            .add_attribute_getter("org", |a: &AuthenticatedActor| {
-                match a.actor {
-                    authn::Actor::OrganisationUser { organisation_id, .. } => Some(),
-                }
-            })
+            // .add_attribute_getter("org", |a: &AuthenticatedActor| {
+            //     match a.actor {
+            //         authn::Actor::OrganisationUser { organisation_id, .. } => Some(organisation_id),
+            //     }
+            // })
     }
 }
