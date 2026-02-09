@@ -1,4 +1,4 @@
-use lucid_db_macros_common::PrimaryKeyType;
+use lucid_macros_common::PrimaryKeyType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde_tokenstream::ParseWrapper;

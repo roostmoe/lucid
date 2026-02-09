@@ -16,11 +16,8 @@ pub enum Error {
     #[error("The request was unauthenticated")]
     Unauthenticated { internal_message: String },
 
-    #[error("Forbidden: {internal_message}")]
-    Forbidden {
-        internal_message: String,
-        required_permission: Option<String>,
-    },
+    #[error("Forbidden")]
+    Forbidden,
 
     #[error("The requested resource was not found: {internal_message} ({error_code:?})")]
     NotFound {
@@ -40,6 +37,10 @@ pub enum Error {
 }
 
 impl Error {
+    pub fn internal_error(internal_message: &str) -> Error {
+        Error::Internal { internal_message: internal_message.to_owned() }
+    }
+
     pub fn internal_anyhow(message: String, source: anyhow::Error) -> Self {
         Self::InternalAnyhow {
             internal_message: message,
@@ -55,6 +56,12 @@ pub enum LookupType {
 
     /// object selected by criteria that would be confusing to call an id
     ByOther(String),
+}
+
+impl LookupType {
+    pub fn into_not_found(&self, resource_type: ResourceType) -> Error {
+        Error::ObjectNotFound { resource_type: resource_type, lookup_type: self.clone() }
+    }
 }
 
 impl From<Error> for HttpError {

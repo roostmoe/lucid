@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync::Arc, time::{Instant, SystemTime}};
 use lucid_common::api::error::Error;
 use lucid_uuid_kinds::OrganisationIdUuid;
 
-use crate::authn;
+use crate::{authn, storage::Storage};
 use crate::authz;
 
 // ---------------------------------------------------------------------------
@@ -188,6 +188,10 @@ impl OpContext {
 
     pub fn metadata(&self) -> &BTreeMap<String, String> {
         &self.metadata
+    }
+
+    pub fn datastore(&self) -> &Arc<dyn Storage> {
+        self.authz.storage()
     }
 }
 

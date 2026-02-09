@@ -1,5 +1,5 @@
 [package]
-name = "lucid-db-macros-common"
+name = "lucid-macros-common"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,4 +7,3 @@ edition = "2024"
 proc-macro2.workspace = true
 syn = { workspace = true, features = ["extra-traits"] }
 quote.workspace = true
-lucid-uuid-kinds.workspace = true

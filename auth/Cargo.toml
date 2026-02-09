@@ -14,7 +14,10 @@ serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+oso.workspace = true
+futures.workspace = true
 
+lucid-auth-macros.workspace = true
 lucid-common.workspace = true
 lucid-db-models.workspace = true
 lucid-types.workspace = true

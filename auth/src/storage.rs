@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lucid_common::api::error::Error;
+use lucid_common::api::{ResourceType, error::Error};
 use lucid_db_models::{IdentityPrincipalType, RoleBinding};
 use uuid::Uuid;
 
@@ -14,5 +14,7 @@ pub trait Storage: Send + Sync {
         opctx: &OpContext,
         identity_type: IdentityPrincipalType,
         identity_id: Uuid,
+        resource_type: ResourceType,
+        resource_id: Uuid,
     ) -> Result<Vec<RoleBinding>, Error>;
 }
