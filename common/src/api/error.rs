@@ -13,6 +13,12 @@ pub enum Error {
         lookup_type: LookupType,
     },
 
+    #[error("Object of type {type_name} already exists")]
+    ObjectAlreadyExists {
+        type_name: ResourceType,
+        object_name: String,
+    },
+
     #[error("The request was unauthenticated")]
     Unauthenticated { internal_message: String },
 
@@ -100,6 +106,13 @@ impl From<Error> for HttpError {
                     format!("not found: {}", message),
                 )
             }
+
+            Error::ObjectAlreadyExists { type_name, object_name } =>
+                HttpError::for_client_error(
+                    Some(String::from("ObjectAlreadyExists")),
+                    dropshot::ClientErrorStatusCode::CONFLICT,
+                    format!("{} with name \"{}\" already exists", type_name, object_name),
+                ),
 
             Error::NotFound {
                 error_code,

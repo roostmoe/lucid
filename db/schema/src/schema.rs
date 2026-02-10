@@ -10,24 +10,11 @@ diesel::table! {
     console_sessions (id) {
         id -> Uuid,
         user_id -> Uuid,
+        organisation_id -> Uuid,
         token -> Text,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
         last_seen_at -> Timestamptz,
-        organisation_id -> Uuid,
-    }
-}
-
-diesel::table! {
-    organisation_roles (id) {
-        id -> Uuid,
-        organisation_id -> Uuid,
-        name -> Text,
-        display_name -> Text,
-        description -> Nullable<Text>,
-        permissions -> Array<Nullable<Text>>,
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
     }
 }
 
@@ -71,37 +58,22 @@ diesel::table! {
         email -> Text,
         external_id -> Nullable<Text>,
         password_hash -> Nullable<Text>,
+        system_admin -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
-        system_admin -> Bool,
     }
 }
 
 diesel::joinable!(console_sessions -> organisations (organisation_id));
 diesel::joinable!(console_sessions -> users (user_id));
-diesel::joinable!(organisation_roles -> organisations (organisation_id));
 diesel::joinable!(organisation_users -> organisations (organisation_id));
 diesel::joinable!(organisation_users -> users (user_id));
 diesel::joinable!(role_bindings -> organisations (organisation_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     console_sessions,
-    organisation_roles,
     organisation_users,
     organisations,
     role_bindings,
     users,
 );
-
-diesel::table! {
-    hosts (id, organisation_id) {
-        id -> Uuid,
-        organisation_id -> Uuid,
-
-        name -> Text,
-
-        created_at -> Timestamptz,
-        updated_at -> Timestamptz,
-        deleted_at -> Nullable<Timestamptz>,
-    }
-}

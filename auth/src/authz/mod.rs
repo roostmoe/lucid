@@ -2,7 +2,6 @@ mod actor;
 pub use actor::AnyActor;
 pub use actor::AuthenticatedActor;
 
-
 mod api_resources;
 pub use api_resources::*;
 

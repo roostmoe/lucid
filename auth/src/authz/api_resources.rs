@@ -165,6 +165,62 @@ impl ApiResource for Organisation {
     }
 }
 
+/// Represents the database itself to Polar
+///
+/// This exists so that we can have roles with no access to the database at all.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Database;
+/// Singleton representing the `Database` itself for authz purposes
+pub const DATABASE: Database = Database;
+
+impl oso::PolarClass for Database {
+    fn get_polar_class_builder() -> oso::ClassBuilder<Self> {
+        oso::Class::builder().add_method(
+            "has_role",
+            |_d: &Database, _actor: AuthenticatedActor, _role: String| {
+                // There is an explicit rule in the Oso policy granting the
+                // appropriate roles on "Database" to the appropriate actors.
+                // We don't need to grant anything extra here.
+                false
+            },
+        )
+    }
+}
+
+impl AuthorizedResource for Database {
+    fn load_roles<'fut>(
+        &'fut self,
+        _: &'fut OpContext,
+        _: &'fut authn::Context,
+        _: &'fut mut RoleSet,
+    ) -> BoxFuture<'fut, Result<(), Error>> {
+        // We don't use (database) roles to grant access to the database.  The
+        // role assignment is hardcoded for all authenticated users.  See the
+        // "has_role" Polar method above.
+        //
+        // Instead of this, we could modify this function to insert into
+        // `RoleSet` the "database user" role.  However, this doesn't fit into
+        // the type signature of roles supported by RoleSet.  RoleSet is really
+        // for roles on database objects -- it assumes they have a ResourceType
+        // and id, neither of which is true for `Database`.
+        futures::future::ready(Ok(())).boxed()
+    }
+
+    fn on_unauthorized(
+        &self,
+        _: &Authz,
+        error: Error,
+        _: AnyActor,
+        _: Action,
+    ) -> Error {
+        error
+    }
+
+    fn polar_class(&self) -> oso::Class {
+        Self::get_polar_class()
+    }
+}
+
 authz_resource! {
     name = Host,
     parent = Organisation,
