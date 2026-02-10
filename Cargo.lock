@@ -1266,6 +1266,7 @@ dependencies = [
  "http",
  "lucid-auth-macros",
  "lucid-common",
+ "lucid-db-fixed-data",
  "lucid-db-models",
  "lucid-types",
  "lucid-uuid-kinds",
@@ -1320,6 +1321,13 @@ dependencies = [
  "lucid-types",
  "lucid-uuid-kinds",
  "uuid",
+]
+
+[[package]]
+name = "lucid-db-fixed-data"
+version = "0.1.0"
+dependencies = [
+ "lucid-uuid-kinds",
 ]
 
 [[package]]

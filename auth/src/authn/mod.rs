@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
-use lucid_uuid_kinds::{GenericUuid, OrganisationIdUuid, UserIdUuid};
+use lucid_db_fixed_data::user_builtin::USER_EXTERNAL_AUTHN;
+use lucid_uuid_kinds::{BuiltInUserUuid, GenericUuid, OrganisationIdUuid, UserIdUuid};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -65,6 +66,22 @@ impl Context {
         }
     }
 
+    pub fn external_authn() -> Context {
+        Context::context_for_builtin_user(USER_EXTERNAL_AUTHN.id)
+    }
+
+    fn context_for_builtin_user(user_builtin_id: BuiltInUserUuid) -> Context {
+        Context {
+            kind: Kind::Authenticated(
+                Details {
+                    actor: Actor::UserBuiltin { user_builtin_id },
+                    credential_id: None,
+                },
+            ),
+            schemes_tried: Vec::new(),
+        }
+    }
+
     /// Returns an unauthenticated context for use internally
     pub fn internal_unauthenticated() -> Context {
         Context { kind: Kind::Unauthenticated, schemes_tried: vec![] }
@@ -98,18 +115,21 @@ pub struct Details {
 #[derive(Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Actor {
     OrganisationUser { user_id: UserIdUuid, organisation_id: OrganisationIdUuid },
+    UserBuiltin { user_builtin_id: BuiltInUserUuid },
 }
 
 impl Actor {
     pub fn user_id(&self) -> Option<UserIdUuid> {
         match self {
             Actor::OrganisationUser { user_id, .. } => Some(*user_id),
+            Actor::UserBuiltin { .. } => None,
         }
     }
 
     pub fn organisation_id(&self) -> Option<OrganisationIdUuid> {
         match self {
             Actor::OrganisationUser { organisation_id, .. } => Some(*organisation_id),
+            Actor::UserBuiltin { .. } => None,
         }
     }
 
@@ -120,6 +140,10 @@ impl Actor {
             Actor::OrganisationUser { user_id, .. } => Some((
                 user_id.into_untyped_uuid(),
                 lucid_db_models::IdentityPrincipalType::User,
+            )),
+            Actor::UserBuiltin { user_builtin_id } => Some((
+                user_builtin_id.into_untyped_uuid(),
+                lucid_db_models::IdentityPrincipalType::BuiltinUser,
             )),
         }
     }
@@ -132,6 +156,10 @@ impl Debug for Actor {
                 .debug_struct("OrganisationUser")
                 .field("user_id", user_id)
                 .field("organisation_id", organisation_id)
+                .finish(),
+            Actor::UserBuiltin { user_builtin_id } => f
+                .debug_struct("UserBuiltin")
+                .field("user_builtin_id", user_builtin_id)
                 .finish()
         }
     }

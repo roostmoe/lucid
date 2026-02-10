@@ -1,7 +1,5 @@
-use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use std::{net::SocketAddr, str::FromStr};
 
-use lucid_auth::authn::external::{Authenticator, session_cookie::HttpAuthnSessionCookie};
-use lucid_db::datastore::DataStore;
 use tracing_subscriber::EnvFilter;
 
 use crate::{
@@ -30,18 +28,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .json()
         .init();
 
-    tracing::info!("connecting to database");
-    let datastore = Arc::new(
-        DataStore::open(config.database_url)
-            .await
-            .expect("failed to connect to database"),
-    );
-
-    let authenticator = Authenticator::new(vec![
-        Box::new(HttpAuthnSessionCookie),
-    ]);
-
-    let ctx = Context::new(datastore, authenticator);
+    let ctx = Context::new(config.database_url)
+        .await
+        .expect("building context");
 
     let listen_addr = SocketAddr::from_str(&config.bind_address)
         .expect("invalid server bind address");

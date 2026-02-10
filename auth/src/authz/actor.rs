@@ -1,5 +1,4 @@
 use lucid_common::api::ResourceType;
-use lucid_uuid_kinds::GenericUuid;
 use uuid::Uuid;
 
 use crate::{authn, authz::roles::RoleSet};
@@ -66,11 +65,13 @@ impl oso::PolarClass for AuthenticatedActor {
             .add_attribute_getter("is_user", |a: &AuthenticatedActor| {
                 match a.actor {
                     authn::Actor::OrganisationUser { .. } => true,
+                    authn::Actor::UserBuiltin { .. } => true,
                 }
             })
             // .add_attribute_getter("org", |a: &AuthenticatedActor| {
             //     match a.actor {
             //         authn::Actor::OrganisationUser { organisation_id, .. } => Some(organisation_id),
+            //         authn::Actor::UserBuiltin { .. } => None,
             //     }
             // })
     }

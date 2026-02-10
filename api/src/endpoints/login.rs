@@ -3,10 +3,9 @@ use dropshot::{
     RequestContext, TypedBody, endpoint,
 };
 use http::header;
-use lucid_auth::authn::external::session_cookie::{
-    SESSION_COOKIE_COOKIE_NAME, clear_session_cookie_header_value,
-    session_cookie_header_value, SessionStore,
-};
+use lucid_auth::{authn::external::session_cookie::{
+    SESSION_COOKIE_COOKIE_NAME, SessionStore, clear_session_cookie_header_value, session_cookie_header_value
+}};
 use lucid_common::api::error::Error;
 use lucid_db_models::User;
 use lucid_types::{
@@ -14,11 +13,11 @@ use lucid_types::{
     dto::{
         params::{LoginParams, LoginSessionParams},
         views::{LoginOrganisation, LoginResponse},
-    },
+    }, identity::Resource,
 };
 use lucid_uuid_kinds::{GenericUuid, OrganisationIdUuid};
 
-use crate::context::Context;
+use crate::context::{Context, op_context_for_external_api};
 
 /// Step 1: validate email + password, return the user's organisations.
 #[endpoint {
@@ -34,23 +33,25 @@ pub async fn login(
 
     let user = ctx
         .datastore
-        .user_get_by_email(&params.email.trim())
-        .await
-        .map_err(|e| {
-            tracing::error!(?e, "failed to look up user");
-            Error::internal_anyhow("failed to look up user".into(), e)
-        })?
+        .user_get_by_email(
+            &ctx.opctx_external_authn,
+            &params.email.trim()
+        )
+        .await?
         .ok_or_else(|| Error::Unauthenticated {
             internal_message: format!("no user with email: {}", params.email),
         })?;
 
-    let user_id = lucid_types::identity::Resource::id(&user);
+    let user_id = Resource::id(&user);
 
     let valid = ctx
         .datastore
-        .user_verify_password(user_id, &params.password)
-        .await
-        .map_err(|e| Error::internal_anyhow("password verification failed".into(), e))?;
+        .user_verify_password(
+            &ctx.opctx_external_authn,
+            user_id,
+            &params.password
+        )
+        .await?;
 
     if !valid {
         return Err(Error::Unauthenticated {
@@ -99,9 +100,8 @@ pub async fn login_session(
 
     let user = ctx
         .datastore
-        .user_get_by_email(&params.email)
-        .await
-        .map_err(|e| Error::internal_anyhow("failed to look up user".into(), e))?
+        .user_get_by_email(&ctx.opctx_external_authn, &params.email)
+        .await?
         .ok_or_else(|| Error::Unauthenticated {
             internal_message: format!("no user with email: {}", params.email),
         })?;
@@ -110,9 +110,12 @@ pub async fn login_session(
 
     let valid = ctx
         .datastore
-        .user_verify_password(user_id, &params.password)
-        .await
-        .map_err(|e| Error::internal_anyhow("password verification failed".into(), e))?;
+        .user_verify_password(
+            &ctx.opctx_external_authn,
+            user_id,
+            &params.password
+        )
+        .await?;
 
     if !valid {
         return Err(Error::Unauthenticated {
@@ -140,14 +143,7 @@ pub async fn login_session(
     });
 
     if !is_member {
-        return Err(Error::Forbidden {
-            internal_message: format!(
-                "user {} is not a member of organisation {}",
-                user_id, organisation_id,
-            ),
-            required_permission: None,
-        }
-        .into());
+        return Err(Error::Forbidden.into());
     }
 
     // --- create session -------------------------------------------------
@@ -219,20 +215,19 @@ pub async fn whoami(
     rqctx: RequestContext<Context>,
 ) -> Result<HttpResponseOk<User>, HttpError> {
     let ctx = rqctx.context();
-    let user_id = ctx
-        .authenticator
-        .authn_request(&rqctx)
-        .await?
-        .actor_required()?
-        .user_id()
-        .unwrap();
+    let opctx = op_context_for_external_api(&rqctx).await?;
+    let actor = opctx.authn.actor_required()?;
+
+    if actor.user_id() == None {
+        return Err(Error::Unauthenticated {
+            internal_message: "actor had no user id".into()
+        }.into())
+    }
+
     let user = ctx
         .datastore
-        .user_get(user_id)
-        .await
-        .map_err(|e|
-            Error::internal_anyhow("failed to lookup user".into(), e)
-        )?;
+        .user_get(&opctx, actor.user_id().unwrap())
+        .await?;
 
     Ok(HttpResponseOk(user.unwrap()))
 }

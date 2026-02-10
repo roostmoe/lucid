@@ -2,59 +2,76 @@ use std::borrow::Borrow;
 use std::sync::Arc;
 
 use dropshot::HttpError;
-use lucid_auth::authn::external::Authenticator;
-use lucid_auth::authz::AuthzStorage;
-use lucid_auth::context::OpContext;
+use lucid_auth::authn::external::{Authenticator, HttpAuthnScheme};
+use lucid_auth::authn::external::session_cookie::HttpAuthnSessionCookie;
+use lucid_auth::{authn, authz};
+use lucid_auth::context::{OpContext, OpKind};
+use lucid_common::api::error::Error;
 use lucid_db::datastore::DataStore;
 
 pub struct Context {
     pub datastore: Arc<DataStore>,
-    pub authenticator: Authenticator<DataStore>,
+    pub authn: Authenticator<DataStore>,
+    pub authz: Arc<authz::Authz>,
+
+    pub(crate) opctx_external_authn: OpContext,
 }
 
 impl Context {
-    pub fn new(
-        datastore: Arc<DataStore>,
-        authenticator: Authenticator<DataStore>,
-    ) -> Self {
-        Context {
-            datastore,
-            authenticator,
-        }
+    pub async fn new(
+        database_url: String,
+    ) -> Result<Self, Error> {
+        let schemes: Vec<Box<dyn HttpAuthnScheme<DataStore>>> = vec![
+            Box::new(HttpAuthnSessionCookie),
+        ];
+
+        let datastore = Arc::new(
+            DataStore::open(database_url).await
+                .map_err(|e| Error::internal_anyhow("Failed to construct datastore".into(), e))?
+        );
+
+        let authn = Authenticator::new(schemes);
+        let authz = Arc::new(authz::Authz::new());
+
+        Ok(Context {
+            datastore: datastore.clone(),
+            authn: authn,
+            authz: authz.clone(),
+
+            opctx_external_authn: OpContext::for_background(
+                authz,
+                authn::Context::external_authn(),
+                Arc::clone(&datastore).clone()
+                    as Arc<dyn lucid_auth::storage::Storage>,
+            ),
+        })
     }
+}
 
-    /// Authenticate the incoming request and build an [`OpContext`] scoped to
-    /// the actor's organisation.
-    ///
-    /// This is the primary entry point for authenticated endpoints.
-    pub async fn op_context_for_external_api(
-        &self,
-        rqctx: &dropshot::RequestContext<Context>,
-    ) -> Result<OpContext, HttpError> {
-        let authn_ctx = Arc::new(self.authenticator.authn_request(rqctx).await?);
-
-        let actor = authn_ctx.actor_required().map_err(HttpError::from)?;
-
-        let organisation_id =
-            actor.organisation_id().ok_or_else(|| {
-                HttpError::for_internal_error(
-                    "authenticated actor has no organisation_id".to_string(),
-                )
-            })?;
-
-        let opctx = OpContext::for_external_api(
-            authn_ctx,
-            organisation_id,
-            self.datastore.clone() as Arc<dyn AuthzStorage>,
-            |metadata| {
-                OpContext::load_request_metadata(rqctx, metadata);
-            },
-        )
-        .await
-        .map_err(HttpError::from)?;
-
-        Ok(opctx)
-    }
+/// Authenticate the incoming request and build an [`OpContext`] scoped to
+/// the actor's organisation.
+///
+/// This is the primary entry point for authenticated endpoints.
+pub(crate) async fn op_context_for_external_api(
+    rqctx: &dropshot::RequestContext<Context>,
+) -> Result<OpContext, HttpError> {
+    let ctx = rqctx.context();
+    OpContext::new_async(
+        async {
+            let authn = Arc::new(
+                ctx.authn.authn_request(rqctx).await?
+            );
+            let datastore = Arc::clone(&ctx.datastore);
+            let authz = authz::Context::new(
+                Arc::clone(&authn),
+                Arc::clone(&ctx.authz),
+                datastore,
+            );
+            Ok((authn, authz))
+        },
+        |metadata| OpContext::load_request_metadata(rqctx, metadata),
+        OpKind::ExternalApiRequest,
+    ).await
 }
 
 /// Allow `Authenticator<DataStore>` to borrow the `DataStore` out of our

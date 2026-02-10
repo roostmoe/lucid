@@ -90,13 +90,25 @@ impl OpContext {
 
     /// Create an [`OpContext`] for a background job that inherits the
     /// permissions of the original triggering request.
-    pub fn for_background(parent: &OpContext) -> Self {
-        Self {
-            authn: Arc::clone(&parent.authn),
-            authz: parent.authz.clone(),
-            created_instant: Instant::now(),
-            created_walltime: SystemTime::now(),
-            metadata: parent.metadata.clone(),
+    pub fn for_background(
+        authz: Arc<authz::Authz>,
+        authn: authn::Context,
+        datastore: Arc<dyn Storage>,
+    ) -> OpContext {
+        let created_instant = Instant::now();
+        let created_walltime = SystemTime::now();
+        let authn = Arc::new(authn);
+        let authz = authz::Context::new(
+            Arc::clone(&authn),
+            Arc::clone(&authz),
+            Arc::clone(&datastore),
+        );
+        OpContext {
+            authn,
+            authz,
+            created_instant,
+            created_walltime,
+            metadata: BTreeMap::new(),
             kind: OpKind::Background,
         }
     }

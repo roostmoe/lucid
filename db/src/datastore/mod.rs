@@ -39,14 +39,4 @@ impl DataStore {
         self.pool.get().await
             .map_err(|e| Error::internal_anyhow("failed to get database connection".into(), e.into()))
     }
-
-    pub(super) async fn pool_connection_unauthorized(
-        &self,
-    ) -> Result<
-        PooledConnection<'_, AsyncDieselConnectionManager<AsyncPgConnection>>,
-        Error
-    > {
-        self.pool.get().await
-            .map_err(|e| Error::internal_anyhow("failed to get database connection".into(), e.into()))
-    }
 }

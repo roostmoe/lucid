@@ -20,5 +20,6 @@ futures.workspace = true
 lucid-auth-macros.workspace = true
 lucid-common.workspace = true
 lucid-db-models.workspace = true
+lucid-db-fixed-data.workspace = true
 lucid-types.workspace = true
 lucid-uuid-kinds.workspace = true

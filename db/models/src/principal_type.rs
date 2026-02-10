@@ -8,5 +8,5 @@ use serde::{Deserialize, Serialize};
 )]
 pub enum IdentityPrincipalType {
     User,
-    Group,
+    BuiltinUser,
 }

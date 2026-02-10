@@ -43,7 +43,7 @@ impl OsoInitBuilder {
         ensure!(new_element, "Oso class already registered: {:?}", &name);
         self.oso
             .register_class(c)
-            .with_context(|| format!("registering Oso class {:?}", name));
+            .with_context(|| format!("registering Oso class {:?}", name))?;
         Ok(self)
     }
 

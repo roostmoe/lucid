@@ -1,7 +1,7 @@
 use futures::{FutureExt, future::BoxFuture};
 use lucid_auth_macros::authz_resource;
 use lucid_common::api::{ResourceType, error::{Error, LookupType}};
-use lucid_uuid_kinds::OrganisationIdUuid;
+use lucid_uuid_kinds::{GenericUuid, OrganisationIdUuid, UserIdUuid};
 use oso::PolarClass;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -146,6 +146,59 @@ impl PolarClass for Organisation {
 }
 
 impl ApiResource for Organisation {
+    fn parent(&self) -> Option<&dyn AuthorizedResource> {
+        None
+    }
+
+    fn resource_type(&self) -> ResourceType {
+        ResourceType::Organisation
+    }
+
+    fn lookup_type(&self) -> &LookupType {
+        &self.lookup_type
+    }
+
+    fn as_resource_with_roles(
+        &self,
+    ) -> Option<&dyn ApiResourceWithRoles> {
+        None
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct User {
+    key: UserIdUuid,
+    lookup_type: LookupType,
+}
+
+impl User {
+    pub fn new(id: UserIdUuid) -> Self {
+        Self {
+            key: id.clone(),
+            lookup_type: LookupType::ById(id.into_untyped_uuid()),
+        }
+    }
+
+    pub fn id(&self) -> UserIdUuid {
+        self.key.clone().into()
+    }
+}
+
+impl Eq for User {}
+impl PartialEq for User {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl PolarClass for User {
+    fn get_polar_class_builder() -> oso::ClassBuilder<Self> {
+        oso::Class::builder()
+            .with_equality_check()
+    }
+}
+
+impl ApiResource for User {
     fn parent(&self) -> Option<&dyn AuthorizedResource> {
         None
     }

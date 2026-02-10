@@ -5,7 +5,7 @@ use lucid_common::api::error::Error;
 use oso::{Oso, OsoError};
 use tracing::debug;
 
-use crate::{authn, authz::{Action, actor::AnyActor, roles::RoleSet}, context::OpContext, storage::Storage};
+use crate::{authn, authz::{Action, actor::AnyActor, oso_generic, roles::RoleSet}, context::OpContext, storage::Storage};
 
 pub struct Authz {
     oso: Oso,
@@ -13,6 +13,15 @@ pub struct Authz {
 }
 
 impl Authz {
+    pub fn new() -> Self {
+        let oso = oso_generic::make_lucid_oso().expect("initializing Oso");
+
+        Authz {
+            oso: oso.oso,
+            class_names: oso.class_names,
+        }
+    }
+
     pub(crate) fn is_allowed<R>(
         &self,
         actor: &AnyActor,
@@ -38,6 +47,14 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn new(
+        authn: Arc<authn::Context>,
+        authz: Arc<Authz>,
+        datastore: Arc<dyn Storage>,
+    ) -> Self {
+        Context { authn, authz, datastore }
+    }
+
     pub(crate) fn datastore(&self) -> &Arc<dyn Storage> {
         &self.datastore
     }
