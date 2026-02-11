@@ -67,6 +67,8 @@ tracing-slog = { git = "https://github.com/oxidecomputer/tracing-slog", default-
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 uuid = { version = "1.17.0", features = ["serde", "v4"] }
 heck = "0.5"
+rand = "0.9.1"
+hex = "0.4.3"
 
 # lucid monorepo
 lucid-auth = { path = "auth" }

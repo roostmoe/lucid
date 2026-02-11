@@ -17,7 +17,7 @@ use lucid_types::{
 };
 use lucid_uuid_kinds::{GenericUuid, OrganisationIdUuid};
 
-use crate::context::{Context, op_context_for_external_api};
+use crate::{config::ServerMode, context::{Context, op_context_for_external_api}, session::gen_session_id};
 
 /// Step 1: validate email + password, return the user's organisations.
 #[endpoint {
@@ -148,7 +148,7 @@ pub async fn login_session(
 
     // --- create session -------------------------------------------------
 
-    let token = uuid::Uuid::new_v4().to_string();
+    let token = gen_session_id();
 
     ctx.datastore
         .session_create(user_id, organisation_id, &token)
@@ -159,12 +159,11 @@ pub async fn login_session(
 
     // --- set cookie -----------------------------------------------------
 
-    // Use the absolute timeout as the cookie max-age so the browser drops it
-    // at the same time the server would expire it.
-    let max_age = chrono::Duration::hours(24);
-
-    // TODO: make `secure` configurable (should be true in production)
-    let cookie_value = session_cookie_header_value(&token, max_age, false)?;
+    let cookie_value = session_cookie_header_value(
+        &token,
+        ctx.session_config.idle_timeout,
+        ctx.mode == ServerMode::Production,
+    )?;
 
     let mut response = HttpResponseHeaders::new_unnamed(HttpResponseOk(()));
     response
@@ -195,8 +194,9 @@ pub async fn logout(
 
     // Always clear the cookie in the browser regardless of whether a
     // server-side session existed.
-    // TODO: make `secure` configurable (should be true in production)
-    let cookie_value = clear_session_cookie_header_value(false)?;
+    let cookie_value = clear_session_cookie_header_value(
+        ctx.mode == ServerMode::Production,
+    )?;
 
     let mut response =
         HttpResponseHeaders::new_unnamed(HttpResponseUpdatedNoContent());

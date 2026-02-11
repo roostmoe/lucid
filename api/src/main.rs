@@ -12,6 +12,7 @@ mod config;
 mod context;
 mod endpoints;
 mod server;
+mod session;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,7 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .json()
         .init();
 
-    let ctx = Context::new(config.database_url)
+    let ctx = Context::new(
+        config.database_url,
+        config.mode,
+        config.session,
+    )
         .await
         .expect("building context");
 

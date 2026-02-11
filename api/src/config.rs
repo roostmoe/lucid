@@ -1,3 +1,4 @@
+use chrono::Duration;
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
@@ -5,6 +6,37 @@ use serde::Deserialize;
 pub struct LucidConfig {
     pub database_url: String,
     pub bind_address: String,
+    pub mode: ServerMode,
+    pub session: SessionConfig,
+}
+
+#[derive(Debug, Default, Deserialize, PartialEq, Eq)]
+pub enum ServerMode {
+    /// Production configures the following side effects:
+    /// - Cookies set to _secure_
+    #[serde(rename = "prod")]
+    #[default]
+    Production,
+
+    /// Development configures the following side effects:
+    /// - Cookies set to _insecure_
+    #[serde(rename = "dev")]
+    Development
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SessionConfig {
+    pub idle_timeout: Duration,
+    pub absolute_timeout: Duration,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        Self {
+            idle_timeout: Duration::hours(24),
+            absolute_timeout: Duration::days(7),
+        }
+    }
 }
 
 impl LucidConfig {

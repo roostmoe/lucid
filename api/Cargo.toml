@@ -17,6 +17,8 @@ tracing-subscriber.workspace = true
 slog.workspace = true
 slog-async.workspace = true
 uuid.workspace = true
+rand.workspace = true
+hex.workspace = true
 
 lucid-auth.workspace = true
 lucid-common.workspace = true

@@ -9,17 +9,22 @@ use lucid_auth::context::{OpContext, OpKind};
 use lucid_common::api::error::Error;
 use lucid_db::datastore::DataStore;
 
+use crate::config::{ServerMode, SessionConfig};
+
 pub struct Context {
     pub datastore: Arc<DataStore>,
     pub authn: Authenticator<DataStore>,
     pub authz: Arc<authz::Authz>,
-
+    pub mode: ServerMode,
+    pub(crate) session_config: SessionConfig,
     pub(crate) opctx_external_authn: OpContext,
 }
 
 impl Context {
     pub async fn new(
         database_url: String,
+        server_mode: ServerMode,
+        session_config: SessionConfig,
     ) -> Result<Self, Error> {
         let schemes: Vec<Box<dyn HttpAuthnScheme<DataStore>>> = vec![
             Box::new(HttpAuthnSessionCookie),
@@ -37,6 +42,8 @@ impl Context {
             datastore: datastore.clone(),
             authn: authn,
             authz: authz.clone(),
+            mode: server_mode,
+            session_config,
 
             opctx_external_authn: OpContext::for_background(
                 authz,
