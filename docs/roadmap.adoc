@@ -1,0 +1,406 @@
+= Lucid: Product Roadmap
+:toc: macro
+:toc-title: Roadmap Contents
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
+
+toc::[]
+
+== Overview
+
+Lucid is an open-source, self-hosted alternative to Red Hat Insights targeting
+teams managing RHEL-alike distributions (Rocky Linux, AlmaLinux) and beyond.
+This roadmap outlines the feature trajectory from core foundations through to a
+fully-featured fleet management platform.
+
+[NOTE]
+====
+This roadmap assumes the following foundations are already in place or in
+active development:
+
+* Authentication & authorisation (JWT + GCP-style IAM)
+* Multi-tenant database schema (users, groups, agents, service accounts)
+* Host agent skeleton with parallel collector subsystems
+* Dropshot API framework + Diesel ORM
+* mTLS with self-signed CA for agent auth
+====
+
+---
+
+== Phase 1: Inventory & Agent Core
+
+_The "I can actually see my servers" phase._
+
+Establishing the fundamental data model for fleet visibility. Everything else
+builds on this.
+
+=== Inventory Tracking
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Agent-based collection
+| Finalise the host agent's collector subsystem — package lists, kernel
+  versions, OS release info, hardware specs. Parallel collection via
+  `tokio::JoinSet` with graceful degradation if individual collectors fail.
+| **P0**
+
+| Host registration & identity
+| Agents self-register on first connection. Unique host identity tied to mTLS
+  certificate CN. Deduplication logic for re-registered hosts (e.g. after
+  reimage).
+| **P0**
+
+| Network inventory
+| Collect and report network interface configuration — IPs, subnets, DNS,
+  bonding/teaming, VLAN tags. Useful for both inventory and compliance views.
+| **P1**
+
+| Location tagging
+| Allow hosts to be tagged with logical locations (datacentre, rack, region,
+  environment). Support both agent-reported and API-assigned locations. Enables
+  filtering and grouping across the UI.
+| **P2**
+|===
+
+=== Agent Lifecycle
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Heartbeat & health
+| Periodic agent check-in with the server. Mark hosts as stale/offline after
+  configurable timeout. Expose agent version + collector health in inventory.
+| **P0**
+
+| Graceful shutdown
+| `SIGTERM` handling, in-flight collection completion, clean deregistration
+  signal to server.
+| **P0**
+
+| Auto-update mechanism
+| Agent self-update capability triggered via API or on a schedule. Staged
+  rollout support (canary → fleet).
+| **P2**
+|===
+
+---
+
+== Phase 2: Content Management
+
+_The "what's actually installed and where did it come from" phase._
+
+=== Repository Configuration
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| RHSM for EL
+| Integrate with Red Hat Subscription Manager metadata for RHEL-family hosts.
+  Parse `/etc/yum.repos.d/`, track enabled repos, repo GPG status, and base
+  URLs. Surface repo drift across the fleet.
+| **P0**
+
+| Repo config for deb-based
+| Extend content management to Debian/Ubuntu. Parse `sources.list` and `.list`
+  files in `sources.list.d/`. Track APT repository state, pinning, and key
+  trust.
+| **P1**
+
+| Custom framework support
+| Plugin architecture for non-standard package managers or internal tooling
+  (e.g. Habitat, Nix, custom RPM repos). Define a collector trait interface so
+  teams can write their own.
+| **P2**
+|===
+
+=== Content Visibility
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Package delta reporting
+| Compare installed packages across hosts or groups. Identify drift, missing
+  patches, and version inconsistencies. The bread and butter of fleet
+  management.
+| **P0**
+
+| Repo health dashboard
+| Centralised view of repository availability, last sync times, and GPG key
+  expiry across the fleet.
+| **P1**
+|===
+
+---
+
+== Phase 3: Vulnerability Management
+
+_The "oh shit, what's exposed" phase._
+
+=== Errata & Advisory Tracking
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Errata ingestion
+| Consume errata feeds from upstream sources (Rocky, Alma, CentOS Stream,
+  Ubuntu USN). Map advisories to installed packages per-host. Store in
+  normalised schema for querying.
+| **P0**
+
+| Repo update tracking
+| Track available updates per-host from configured repositories. Differentiate
+  security, bugfix, and enhancement updates. Calculate "patch gap" metrics.
+| **P0**
+
+| CVE correlation
+| Map errata to CVE identifiers. Expose CVSS scores, affected package versions,
+  and fix-available status. Enable filtering by severity across the fleet.
+| **P1**
+
+| Vulnerability API
+| RESTful endpoints for querying vulnerability state — by host, by CVE, by
+  severity, by package. Feeds into both the UI and external integrations.
+| **P1**
+|===
+
+---
+
+== Phase 4: Compliance & Auditing
+
+_The "prove we're not a liability" phase._
+
+=== Security Compliance
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| OpenSCAP integration
+| Agent-side SCAP scanning using `oscap` tooling. Collect and report XCCDF
+  results. Support standard profiles (CIS, STIG, PCI-DSS) out of the box.
+| **P0**
+
+| Compliance dashboards
+| Fleet-wide compliance posture view. Per-host pass/fail/error breakdowns.
+  Trend over time. Exportable reports for auditors who love PDFs.
+| **P1**
+
+| Policy drift detection
+| Track compliance state changes between scans. Alert on regressions. Tie into
+  remediation workflows.
+| **P2**
+|===
+
+=== Firewall Auditing
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| FirewallD & UFW collection
+| Collect active firewall rules from `firewalld` zones and `ufw` status.
+  Normalise into a common rule model for cross-host comparison.
+| **P1**
+
+| iptables & nftables auditing
+| Raw rule collection for hosts using `iptables` or `nft` directly. Parse and
+  present in a readable format. Flag common misconfigurations (wide-open INPUT,
+  no default DROP, etc.).
+| **P1**
+
+| Firewall policy comparison
+| Compare expected vs. actual firewall state across host groups. Surface
+  deviations from a defined baseline.
+| **P2**
+|===
+
+---
+
+== Phase 5: Remediation & Patching
+
+_The "fix it, don't just stare at it" phase._
+
+=== Patch Management
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Patch API
+| API-driven patching — trigger package updates on individual hosts or groups
+  via the agent. Supports `yum/dnf update` and `apt upgrade` with configurable
+  scope (security-only, specific packages, full update).
+| **P0**
+
+| Patch planning
+| Schedule maintenance windows. Define patch groups and rollout order.
+  Pre-flight checks (disk space, repo availability, dependency resolution)
+  before committing. Dry-run mode.
+| **P0**
+
+| Patch history & rollback
+| Track every patch operation — what was updated, when, by whom,
+  success/failure. Support rollback via `dnf history undo` or equivalent where
+  possible.
+| **P1**
+|===
+
+=== Remediations API
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Remediation playbooks
+| Define reusable remediation actions beyond patching — config file changes,
+  service restarts, script execution. Version-controlled and auditable.
+| **P1**
+
+| Remediation execution engine
+| Execute remediation actions via the agent. Job queuing, status tracking,
+  output capture. Think Ansible-lite but agent-native.
+| **P1**
+
+| Auto-remediation rules
+| Trigger remediations automatically based on conditions — e.g. "if compliance
+  scan fails rule X, apply remediation Y." Requires approval workflows for
+  production environments.
+| **P2**
+|===
+
+---
+
+== Phase 6: Observability Integration
+
+_The "plug it into the stuff we already use" phase._
+
+=== Metrics & Logging Export
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Prometheus metrics
+| Expose fleet metrics in Prometheus format — host counts, patch compliance
+  percentages, vulnerability counts by severity, agent health stats. `/metrics`
+  endpoint on the server.
+| **P1**
+
+| Loki log forwarding
+| Forward agent logs and audit events to Loki-compatible endpoints. Structured
+  logging with labels for host, tenant, event type.
+| **P2**
+
+| Datadog integration
+| Push metrics and events to Datadog via their API. Map Lucid concepts to
+  Datadog tags and service checks. Optional — for teams already invested in
+  that ecosystem.
+| **P2**
+
+| Webhook / event bus
+| Generic event emission (webhook, NATS, or similar) for all significant state
+  changes. Enables custom integrations without building specific adapters.
+| **P2**
+|===
+
+---
+
+== Phase 7: Airgapped & Edge Deployments
+
+_The "we literally cannot reach the internet" phase._
+
+=== Outposts
+
+[cols="1,3,1", options="header"]
+|===
+| Feature | Description | Priority
+
+| Outpost proxy architecture
+| Deploy lightweight Lucid proxy nodes ("Outposts") in airgapped or NAT'd
+  networks. Agents connect to the local Outpost, which relays data to the
+  central Lucid server when connectivity allows. Store-and-forward model.
+| **P1**
+
+| Proxy Lucid API behind NAT
+| Outposts expose a subset of the Lucid API locally. Agents in isolated networks
+  get the same registration, heartbeat, and collection experience without direct
+  server access.
+| **P1**
+
+| Offline content sync
+| Mechanism to sync errata, compliance profiles, and patch metadata to Outposts
+  via sneakernet (USB, `scp`, etc.) for truly airgapped environments.
+| **P2**
+
+| Airgapped task execution
+| Queue remediation and patch tasks for execution in disconnected environments.
+  Sync results back when connectivity is restored.
+| **P2**
+|===
+
+---
+
+== Phasing Summary
+
+[cols="1,2,1", options="header"]
+|===
+| Phase | Focus | Depends On
+
+| **Phase 1**
+| Inventory & Agent Core
+| Foundations (auth, agent, API, mTLS)
+
+| **Phase 2**
+| Content Management
+| Phase 1
+
+| **Phase 3**
+| Vulnerability Management
+| Phase 2 (package + repo data)
+
+| **Phase 4**
+| Compliance & Auditing
+| Phase 1 (agent collection framework)
+
+| **Phase 5**
+| Remediation & Patching
+| Phase 3 + Phase 4 (know what to fix)
+
+| **Phase 6**
+| Observability Integration
+| Phase 1+ (metrics exist to export)
+
+| **Phase 7**
+| Airgapped & Edge
+| Phase 5 (full feature set to proxy)
+|===
+
+[TIP]
+====
+Phases 3, 4, and 6 can be developed in parallel once Phase 1 is solid. Phase 5
+benefits from both vulnerability and compliance data being available. Phase 7
+is a deployment model concern and can be prototyped early but fully realised
+last.
+====
+
+---
+
+== Open Questions
+
+* **Custom collector plugin SDK** — how much do we formalise the trait interface
+  for third-party collectors? Ship a crate or just document the trait?
+* **deb-based support timeline** — is this MVP or post-1.0? Determines how much
+  abstraction the content management layer needs upfront.
+* **Remediation execution model** — pure agent-side execution, or hybrid with
+  optional SSH fallback for agentless hosts?
+* **Outpost auth** — do Outposts get their own mTLS certs from the central CA,
+  or do we support delegated sub-CAs?
+* **Multi-tenancy boundaries for Outposts** — can one Outpost serve multiple
+  tenants, or is it 1:1?
