@@ -1244,32 +1244,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
-name = "lucid-api"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "config",
- "dropshot",
- "hex",
- "http",
- "lucid-auth",
- "lucid-common",
- "lucid-db",
- "lucid-db-models",
- "lucid-types",
- "lucid-uuid-kinds",
- "rand",
- "serde",
- "slog",
- "slog-async",
- "tokio",
- "tracing",
- "tracing-slog",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "lucid-auth"
 version = "0.1.0"
 dependencies = [
@@ -1309,7 +1283,11 @@ dependencies = [
 name = "lucid-beacon"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "chrono",
  "dropshot",
+ "hex",
+ "http",
  "lucid-auth",
  "lucid-beacon-api",
  "lucid-beacon-config",
@@ -1318,11 +1296,13 @@ dependencies = [
  "lucid-db-models",
  "lucid-types",
  "lucid-uuid-kinds",
+ "rand",
  "slog",
  "slog-async",
  "tokio",
  "tracing",
  "tracing-slog",
+ "tracing-subscriber",
 ]
 
 [[package]]

@@ -1,13 +1,17 @@
-use std::{env, net::{IpAddr, SocketAddr}, str::FromStr};
+use std::{convert::Infallible, env, io::Stdout, net::{IpAddr, SocketAddr}, str::FromStr, sync::Arc};
 
 use dropshot::ConfigDropshot;
-use slog::Drain;
+use lucid_beacon_config::{LogFormat, LogLevel, LoggingConfig};
+use slog::{Drain, SendSyncRefUnwindSafeDrain};
+use tracing::level_filters::LevelFilter;
 use tracing_slog::TracingSlogDrain;
+use tracing_subscriber::{FmtSubscriber, fmt::format::{DefaultFields, Pretty}, layer::SubscriberExt, registry, util::SubscriberInitExt};
 
 use crate::context::Context;
 
 mod api;
 mod context;
+mod app;
 
 #[tokio::main]
 async fn main() {
@@ -19,17 +23,11 @@ async fn main() {
         config_path.map(|path| vec![path]),
     ).expect("Failed to load configuration");
 
-    let ctx = Context::new(
-        config.database.url,
-        config.session,
-    ).await.expect("building context");
+    let dropshot_logger = setup_tracing(config.clone().logging);
 
-    // Construct a shim to pipe dropshot logs into the global tracing logger
-    let dropshot_logger = {
-        let level_drain = slog::LevelFilter(TracingSlogDrain, slog::Level::Debug).fuse();
-        let async_drain = slog_async::Async::new(level_drain).build().fuse();
-        slog::Logger::root(async_drain, slog::o!())
-    };
+    let ctx = Context::new(config.clone())
+        .await
+        .expect("building context");
 
     let http_server = {
         dropshot::ServerBuilder::new(
@@ -38,10 +36,7 @@ async fn main() {
             dropshot_logger,
         )
             .config(ConfigDropshot {
-                bind_address: SocketAddr::new(
-                    IpAddr::from_str("0.0.0.0").expect("Failed to build bind address"),
-                    8080,
-                ),
+                bind_address: config.server.bind_addr,
                 ..Default::default()
             })
             .start()
@@ -49,4 +44,33 @@ async fn main() {
     };
 
     http_server.await.expect("Failed to run server");
+}
+
+type DropshotLogger = slog::Logger<Arc<dyn SendSyncRefUnwindSafeDrain<Ok = (), Err = Infallible>>>;
+
+fn setup_tracing(cfg: LoggingConfig) -> DropshotLogger {
+    let layer = tracing_subscriber::fmt::layer()
+        .with_level(true)
+        .with_file(false);
+
+    let level_filter = match cfg.level {
+        LogLevel::Trace => LevelFilter::TRACE,
+        LogLevel::Debug => LevelFilter::DEBUG,
+        LogLevel::Info => LevelFilter::INFO,
+        LogLevel::Warn => LevelFilter::WARN,
+        LogLevel::Error => LevelFilter::ERROR,
+    };
+
+    match cfg.format {
+        LogFormat::Json => registry().with(layer.json()).with(level_filter).init(),
+        LogFormat::Pretty => registry().with(layer.pretty()).with(level_filter).init(),
+    }
+
+    let logger = {
+        let level_drain = slog::LevelFilter(TracingSlogDrain, slog::Level::Debug).fuse();
+        let async_drain = slog_async::Async::new(level_drain).build().fuse();
+        slog::Logger::root(async_drain, slog::o!())
+    };
+
+    logger
 }

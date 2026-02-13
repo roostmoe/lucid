@@ -44,3 +44,36 @@ resource Organisation {
 	"update" if "admin";
 	"delete" if "admin";
 }
+
+resource User {
+	permissions = [
+	  "get",
+	  "list",
+	  "create",
+	  "update",
+	  "delete",
+	];
+
+	roles = [
+	  "admin",
+	  "viewer",
+	];
+
+	# Roles implied by other roles on this resource
+	"viewer" if "admin";
+
+	# Permissions granted directly by roles on this resource
+	"get" if "viewer";
+	"list" if "viewer";
+
+	"create" if "admin";
+	"update" if "admin";
+	"delete" if "admin";
+}
+
+resource Database {
+	permissions = ["query"];
+}
+
+# All authenticated users have the "query" permission on the database.
+has_permission(_actor: AuthenticatedActor, "query", _resource: Database);

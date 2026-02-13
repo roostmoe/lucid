@@ -1,8 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-  "api",
-
   "auth",
   "auth/macros",
 
@@ -78,7 +76,6 @@ hex = "0.4.3"
 lucid-auth = { path = "auth" }
 lucid-auth-macros = { path = "auth/macros" }
 
-lucid-beacon = { path = "beacon" }
 lucid-beacon-api = { path = "beacon/api" }
 lucid-beacon-config = { path = "beacon/config" }
 

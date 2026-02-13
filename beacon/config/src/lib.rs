@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 use config::{Config, File};
 use schemars::JsonSchema;
@@ -8,6 +8,7 @@ pub const ENV_PREFIX: &str = "BEACON";
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Default)]
 pub struct BeaconConfig {
+    pub server: ServerConfig,
     pub logging: LoggingConfig,
     pub session: SessionConfig,
     pub database: DatabaseConfig,
@@ -37,6 +38,26 @@ impl BeaconConfig {
     }
 }
 
+/// Configuration for the server.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ServerConfig {
+    /// The address to mount the server on
+    #[schemars(with = "String", example = "df_bind_addr")]
+    pub bind_addr: SocketAddr,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            bind_addr: df_bind_addr(),
+        }
+    }
+}
+
+fn df_bind_addr() -> SocketAddr {
+    SocketAddr::from_str("0.0.0.0:8080").expect("failed building default bind addr")
+}
+
 /// Configuration for logging.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct LoggingConfig {
@@ -45,6 +66,12 @@ pub struct LoggingConfig {
     /// Allowed values: trace, debug, info, warn, error
     #[schemars(with = "String", example = "df_log_level")]
     pub level: LogLevel,
+
+    /// The format to emit logs in.
+    ///
+    /// Allowed values: json, pretty
+    #[schemars(with = "String", example = "df_log_format")]
+    pub format: LogFormat,
 
     /// The file path to write logs to. If not set, logs will be written to
     /// stdout.
@@ -56,6 +83,7 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: df_log_level(),
+            format: df_log_format(),
             file_path: df_log_path(),
         }
     }
@@ -63,6 +91,10 @@ impl Default for LoggingConfig {
 
 fn df_log_level() -> LogLevel {
     LogLevel::Info
+}
+
+fn df_log_format() -> LogFormat {
+    LogFormat::Json
 }
 
 fn df_log_path() -> Option<PathBuf> {
@@ -77,6 +109,13 @@ pub enum LogLevel {
     Info,
     Warn,
     Error,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum LogFormat {
+    Json,
+    Pretty,
 }
 
 /// The configuration for user sessions, including timeouts and expiration
