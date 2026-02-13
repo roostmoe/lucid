@@ -5,3 +5,18 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+dropshot.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-slog.workspace = true
+slog.workspace = true
+slog-async.workspace = true
+
+lucid-auth.workspace = true
+lucid-common.workspace = true
+lucid-beacon-api.workspace = true
+lucid-beacon-config.workspace = true
+lucid-db.workspace = true
+lucid-db-models.workspace = true
+lucid-types.workspace = true
+lucid-uuid-kinds.workspace = true

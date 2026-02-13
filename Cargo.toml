@@ -78,6 +78,10 @@ hex = "0.4.3"
 lucid-auth = { path = "auth" }
 lucid-auth-macros = { path = "auth/macros" }
 
+lucid-beacon = { path = "beacon" }
+lucid-beacon-api = { path = "beacon/api" }
+lucid-beacon-config = { path = "beacon/config" }
+
 lucid-common = { path = "common" }
 lucid-macros-common = { path = "common/macros" }
 

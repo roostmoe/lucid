@@ -1308,6 +1308,22 @@ dependencies = [
 [[package]]
 name = "lucid-beacon"
 version = "0.1.0"
+dependencies = [
+ "dropshot",
+ "lucid-auth",
+ "lucid-beacon-api",
+ "lucid-beacon-config",
+ "lucid-common",
+ "lucid-db",
+ "lucid-db-models",
+ "lucid-types",
+ "lucid-uuid-kinds",
+ "slog",
+ "slog-async",
+ "tokio",
+ "tracing",
+ "tracing-slog",
+]
 
 [[package]]
 name = "lucid-beacon-api"
@@ -1325,6 +1341,14 @@ dependencies = [
 [[package]]
 name = "lucid-beacon-config"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "config",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "tracing",
+]
 
 [[package]]
 name = "lucid-common"

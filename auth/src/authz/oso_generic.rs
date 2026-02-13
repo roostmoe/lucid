@@ -4,6 +4,8 @@ use anyhow::{Context, ensure};
 use oso::{Oso, PolarClass};
 use tracing::info;
 
+use crate::authz::{AnyActor, AuthenticatedActor, Database, Organisation, User};
+
 const LUCID_AUTHZ_CONFIG_BASE: &str = include_str!("lucid.polar");
 
 pub(super) struct Init {
@@ -71,7 +73,13 @@ pub fn make_lucid_oso() -> Result<OsoInit, anyhow::Error> {
 
     // Handwritten classes
     let classes = [
+        AnyActor::get_polar_class(),
+        AuthenticatedActor::get_polar_class(),
         Action::get_polar_class(),
+
+        Organisation::get_polar_class(),
+        User::get_polar_class(),
+        Database::get_polar_class(),
     ];
     for c in classes {
         oso_builder = oso_builder.register_class(c)?;

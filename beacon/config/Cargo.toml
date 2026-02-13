@@ -3,4 +3,14 @@ name = "lucid-beacon-config"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+path = "src/main.rs"
+name = "lucid-beacon-config-docs"
+
 [dependencies]
+config.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+tracing.workspace = true
