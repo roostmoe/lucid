@@ -30,6 +30,11 @@ $ mise trust
 $ mise install
 ----
 
+== Community
+
+We have a [Matrix](https://matrix.org) space for talking about Lucid:
+https://matrix.to/#/#lucid:hayden.moe[`#lucid:matrix.org`]
+
 == License
 
 This project uses the link:./LICENSE[Apache-2.0 License].
