@@ -574,6 +574,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dropshot-api-manager-types"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0103ef0b1a219c1a620e0b01659f6a27185df697876388144b1fb9637123e63"
+dependencies = [
+ "anyhow",
+ "camino",
+ "paste",
+ "semver 1.0.27",
+ "serde_json",
+]
+
+[[package]]
 name = "dropshot_endpoint"
 version = "0.16.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1291,6 +1304,27 @@ dependencies = [
  "serde_tokenstream",
  "syn 2.0.114",
 ]
+
+[[package]]
+name = "lucid-beacon"
+version = "0.1.0"
+
+[[package]]
+name = "lucid-beacon-api"
+version = "0.1.0"
+dependencies = [
+ "dropshot",
+ "dropshot-api-manager-types",
+ "http",
+ "lucid-common",
+ "lucid-types",
+ "schemars 0.8.22",
+ "serde",
+]
+
+[[package]]
+name = "lucid-beacon-config"
+version = "0.1.0"
 
 [[package]]
 name = "lucid-common"

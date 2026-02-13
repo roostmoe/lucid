@@ -6,6 +6,10 @@ members = [
   "auth",
   "auth/macros",
 
+  "beacon",
+  "beacon/api",
+  "beacon/config",
+
   "common",
   "common/macros",
 
