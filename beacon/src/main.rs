@@ -1,11 +1,11 @@
-use std::{convert::Infallible, env, io::Stdout, net::{IpAddr, SocketAddr}, str::FromStr, sync::Arc};
+use std::{convert::Infallible, env, sync::Arc};
 
 use dropshot::ConfigDropshot;
 use lucid_beacon_config::{LogFormat, LogLevel, LoggingConfig};
 use slog::{Drain, SendSyncRefUnwindSafeDrain};
 use tracing::level_filters::LevelFilter;
 use tracing_slog::TracingSlogDrain;
-use tracing_subscriber::{FmtSubscriber, fmt::format::{DefaultFields, Pretty}, layer::SubscriberExt, registry, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, registry, util::SubscriberInitExt};
 
 use crate::context::Context;
 
