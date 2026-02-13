@@ -1,0 +1,128 @@
+= Contributing to Lucid
+
+Thanks for considering contributing to Lucid! We're building an open-source
+infrastructure management platform, and we welcome contributions from the
+community.
+
+== Getting Started
+
+=== Prerequisites
+
+Before you can contribute, you'll need:
+
+* `libpq` development libraries (e.g., `sudo dnf install -y pkgconfig(libpq)`)
+  for PostgreSQL client support
+* https://mise.jdx.dev[`mise`] for toolchain management
+* Docker and `docker-compose` for local development and testing
+* A PostgreSQL instance (provided via `docker-compose`)
+
+=== Setting Up Your Development Environment
+
+[source,shell]
+----
+# Clone the repository
+$ git clone https://github.com/roostmoe/lucid.git
+$ cd lucid
+
+# Trust the project directory for mise
+$ mise trust
+
+# Install the Rust toolchain and other tools
+$ mise install
+
+# Start the local database
+$ docker-compose up -d
+
+# Run any pending database migrations
+$ cd db/schema && diesel migration run
+----
+
+The project uses a Cargo workspace structure with multiple crates:
+
+* `api/` — Dropshot-based HTTP API server
+* `auth/` — Authentication and authorisation logic
+* `db/` — Database schema, models, and migrations (Diesel ORM)
+* `common/` — Shared utilities and types
+* `types/` — Core domain types
+* `uuid-kinds/` — UUID newtype wrappers
+
+== Making Changes
+
+=== Code Style
+
+* Run `cargo fmt` before committing. We follow standard Rust formatting.
+* Run `cargo clippy` to catch common mistakes and lint issues.
+* Aim for clear, self-documenting code with comments where intent isn't obvious.
+
+=== Testing
+
+* Write tests for new functionality in the appropriate crate.
+* Run `cargo test` to execute the full test suite.
+* Ensure tests pass locally before opening a pull request.
+
+Integration tests may require a running PostgreSQL instance. The `DATABASE_URL`
+is configured in `mise.toml` and defaults to
+`postgres://postgres:postgres@localhost/postgres`.
+
+=== Database Migrations
+
+If your change requires database schema changes:
+
+[source,shell]
+----
+# Create a new migration
+$ cargo diesel migration generate your_migration_name
+
+# Edit the generated `up.sql` and `down.sql` files
+
+# Run the migration
+$ cargo diesel migration run
+
+# Test rollback
+$ cargo diesel migration revert
+----
+
+Migrations are located in `db/migrations/`. Ensure both `up.sql` and `down.sql`
+are correct and idempotent where possible.
+
+=== Commit Messages
+
+* Use clear, descriptive commit messages.
+* Reference relevant issues or PRs where applicable (e.g., `Fixes #123`).
+* Keep commits atomic — one logical change per commit.
+
+== Submitting a Pull Request
+
+1. Fork the repository and create a feature branch from `main`.
+2. Make your changes, following the style and testing guidelines above.
+3. Push your branch to your fork.
+4. Open a pull request against the `main` branch of the upstream repository.
+5. Provide a clear description of what your PR does and why.
+
+We'll review your PR as soon as we can. Be prepared to iterate based on
+feedback.
+
+== Reporting Issues
+
+If you find a bug or have a feature request, please open an issue on GitHub.
+Include:
+
+* A clear description of the problem or feature
+* Steps to reproduce (for bugs)
+* Expected vs. actual behaviour
+* Relevant environment details (OS, Rust version, etc.)
+
+== Code of Conduct
+
+Be respectful and constructive. We're all here to build something useful.
+Harassment, discrimination, or other dickish behaviour won't be tolerated.
+
+== Questions?
+
+If you're unsure about anything, feel free to open a discussion on GitHub or
+ask in an issue. We're happy to help new contributors get oriented.
+
+== License
+
+By contributing, you agree that your contributions will be licensed under the
+link:./LICENSE[Apache-2.0 License], the same as the project itself.
