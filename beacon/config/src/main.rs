@@ -18,7 +18,7 @@ fn generate_config_docs(schema: &RootSchema) -> String {
 
     output.push_str("[source,toml]\n----\n");
     if let Some(obj) = &schema.schema.object {
-        for (name, _) in &obj.properties {
+        for name in obj.properties.keys() {
             output.push_str(&format!("[{}]\n...\n\n", name));
         }
     }
@@ -60,9 +60,7 @@ fn generarte_section(
             return;
         }
         processed.insert(def_name.to_string());
-        definitions
-            .get(def_name)
-            .and_then(|s| Some(s.clone().into_object()))
+        definitions.get(def_name).map(|s| s.clone().into_object())
     } else {
         Some(obj.clone())
     };
@@ -75,10 +73,10 @@ fn generarte_section(
     let header_level = "=".repeat(depth + 2);
     output.push_str(&format!("{} `[{}]`\n\n", header_level, name));
 
-    if let Some(metadata) = &resolved.metadata {
-        if let Some(desc) = &metadata.description {
-            output.push_str(&format!("{}\n\n", desc));
-        }
+    if let Some(metadata) = &resolved.metadata
+        && let Some(desc) = &metadata.description
+    {
+        output.push_str(&format!("{}\n\n", desc));
     }
 
     output.push_str("[source,toml]\n----\n");
@@ -89,12 +87,12 @@ fn generarte_section(
             let field_obj = field_schema.clone().into_object();
 
             // Extract description comment
-            if let Some(metadata) = &field_obj.metadata {
-                if let Some(desc) = &metadata.description {
-                    output.push_str("\n");
-                    for line in desc.lines() {
-                        output.push_str(&format!("# {}\n", line));
-                    }
+            if let Some(metadata) = &field_obj.metadata
+                && let Some(desc) = &metadata.description
+            {
+                output.push('\n');
+                for line in desc.lines() {
+                    output.push_str(&format!("# {}\n", line));
                 }
             }
 

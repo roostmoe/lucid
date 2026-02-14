@@ -12,6 +12,7 @@ pub struct Beacon {
     pub jwt: Arc<JwtManager>,
     pub oidc: Arc<OidcClient>,
     pub oidc_state: Arc<oidc_state::OidcStateCache>,
+    #[allow(dead_code)]
     pub(crate) config: BeaconConfig,
 }
 

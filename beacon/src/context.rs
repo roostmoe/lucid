@@ -32,6 +32,7 @@ impl Context {
 /// Authenticate the incoming request via JWT and build an [`OpContext`].
 ///
 /// This is the primary entry point for authenticated endpoints.
+#[allow(dead_code)]
 pub(crate) async fn op_context_for_external_api(
     rqctx: &RequestContext<Context>,
 ) -> Result<OpContext, HttpError> {

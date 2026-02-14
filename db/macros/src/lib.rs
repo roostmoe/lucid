@@ -2,7 +2,7 @@ use lucid_macros_common::PrimaryKeyType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde_tokenstream::ParseWrapper;
-use syn::{Data, DataStruct, DeriveInput, Error, Fields, Ident, parse_quote, spanned::Spanned};
+use syn::{parse_quote, spanned::Spanned, Data, DataStruct, DeriveInput, Error, Fields, Ident};
 
 #[derive(Debug)]
 pub(crate) struct NameValue {
@@ -68,11 +68,10 @@ impl MacroAttributes {
     fn parse_from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         let inner_attrs = attrs
             .iter()
-            .filter_map(|attr| {
-                attr.path().is_ident("resource").then(|| {
-                    let meta_list = attr.meta.require_list()?;
-                    Ok::<_, syn::Error>(&meta_list.tokens)
-                })
+            .filter(|&attr| attr.path().is_ident("resource"))
+            .map(|attr| {
+                let meta_list = attr.meta.require_list()?;
+                Ok::<_, syn::Error>(&meta_list.tokens)
             })
             .collect::<Result<Vec<_>, _>>()?;
 

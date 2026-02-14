@@ -119,19 +119,10 @@ pub enum LogFormat {
 }
 
 /// Configuration for authentication (OIDC + JWT)
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 pub struct AuthConfig {
     pub oidc: OidcConfig,
     pub jwt: JwtConfig,
-}
-
-impl Default for AuthConfig {
-    fn default() -> Self {
-        Self {
-            oidc: OidcConfig::default(),
-            jwt: JwtConfig::default(),
-        }
-    }
 }
 
 /// OIDC provider configuration

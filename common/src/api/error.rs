@@ -69,7 +69,7 @@ pub enum LookupType {
 impl LookupType {
     pub fn into_not_found(&self, resource_type: ResourceType) -> Error {
         Error::ObjectNotFound {
-            resource_type: resource_type,
+            resource_type,
             lookup_type: self.clone(),
         }
     }

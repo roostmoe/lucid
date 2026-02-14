@@ -61,11 +61,7 @@ fn setup_tracing(cfg: LoggingConfig) -> DropshotLogger {
         LogFormat::Pretty => registry().with(layer.pretty()).with(level_filter).init(),
     }
 
-    let logger = {
-        let level_drain = slog::LevelFilter(TracingSlogDrain, slog::Level::Debug).fuse();
-        let async_drain = slog_async::Async::new(level_drain).build().fuse();
-        slog::Logger::root(async_drain, slog::o!())
-    };
-
-    logger
+    let level_drain = slog::LevelFilter(TracingSlogDrain, slog::Level::Debug).fuse();
+    let async_drain = slog_async::Async::new(level_drain).build().fuse();
+    slog::Logger::root(async_drain, slog::o!())
 }
