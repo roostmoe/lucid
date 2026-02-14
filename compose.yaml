@@ -8,8 +8,27 @@ services:
     shm_size: 128mb
     environment:
       POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: keycloak
       PGDATA: /data
     ports:
       - 5432:5432
     volumes:
       - pgdata:/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+
+  # Keycloak - local OIDC provider for authentication development
+  # Admin console available at http://localhost:8090 (admin/admin)
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8090:8080"
+    depends_on:
+      - postgres
