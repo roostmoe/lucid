@@ -1,0 +1,345 @@
+= Local Development Setup
+:toc: macro
+:toc-title: Contents
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
+
+toc::[]
+
+== Prerequisites
+
+- **Docker** and **Docker Compose** (for PostgreSQL and Keycloak)
+- **mise** (for Rust toolchain and Diesel CLI)
+- **Rust 2024 edition** (managed via mise)
+
+== Quick Start
+
+[source,bash]
+----
+# Start infrastructure services
+docker compose up -d
+
+# Run database migrations
+cd db/schema
+diesel migration run
+
+# Create a config.toml (see Configuration below)
+
+# Build and run Lucid
+cargo run
+----
+
+Lucid beacon runs on `http://localhost:8080`.  
+Keycloak admin console available at `http://localhost:8090` (credentials: `admin` / `admin`).
+
+== Infrastructure Setup
+
+=== PostgreSQL
+
+The `compose.yaml` starts PostgreSQL 18 with two databases:
+
+- `postgres` (default) — used by Lucid
+- `keycloak` — used by Keycloak
+
+PostgreSQL listens on `localhost:5432` with credentials:
+
+- **Username:** `postgres`
+- **Password:** `postgres`
+
+=== Keycloak (Local OIDC Provider)
+
+Keycloak provides OIDC authentication for local development.
+
+**Access:**
+
+- Admin console: `http://localhost:8090`
+- Username: `admin`
+- Password: `admin`
+
+== Keycloak Configuration
+
+=== 1. Create a Realm
+
+Realms isolate groups of users and applications. Create one for Lucid:
+
+1. Log in to Keycloak admin console (`http://localhost:8090`)
+2. Click the realm dropdown (top-left, currently showing "master")
+3. Click **Create Realm**
+4. Set **Realm name** to `lucid`
+5. Click **Create**
+
+=== 2. Create a Client
+
+Clients represent applications that authenticate users via OIDC.
+
+1. In the `lucid` realm, navigate to **Clients** (left sidebar)
+2. Click **Create client**
+3. Fill in the form:
+   - **Client type:** `OpenID Connect`
+   - **Client ID:** `lucid-beacon`
+4. Click **Next**
+5. Enable **Client authentication** (this is a confidential client)
+6. Click **Next**
+7. Set **Valid redirect URIs** to:
+   ```
+   http://localhost:8080/auth/callback
+   ```
+8. Click **Save**
+
+=== 3. Get the Client Secret
+
+1. Stay in the `lucid-beacon` client configuration
+2. Navigate to the **Credentials** tab
+3. Copy the **Client secret** value
+4. Paste it into your `config.toml` (see Configuration section below)
+
+=== 4. Create Test Users
+
+1. Navigate to **Users** (left sidebar)
+2. Click **Create new user**
+3. Fill in:
+   - **Username:** `alice`
+   - **Email:** `alice@example.com`
+   - **Email verified:** `On`
+   - **First name:** `Alice`
+   - **Last name:** `Test`
+4. Click **Create**
+5. Navigate to the **Credentials** tab for the new user
+6. Click **Set password**
+   - **Password:** `password` (or whatever you like)
+   - **Temporary:** `Off` (so you don't have to change it on first login)
+7. Click **Save**
+8. Repeat for additional users (e.g., `bob@example.com`)
+
+[TIP]
+====
+The first user to log in via Lucid becomes the owner. If you want `alice` to be the owner, ensure she's the first to complete the OIDC flow.
+====
+
+== Configuration
+
+Create a `config.toml` in the repository root:
+
+.`config.toml`
+[source,toml]
+----
+[server]
+bind_addr = "0.0.0.0:8080"
+
+[logging]
+level = "debug"  # Use "debug" for local dev to see detailed logs
+format = "pretty"  # More readable than JSON during development
+file_path = "/tmp/lucid-beacon.log"  # Or omit to log to stdout
+
+[database]
+url = "postgres://postgres:postgres@localhost/postgres"
+
+[auth.oidc]
+discovery_url = "http://localhost:8090/realms/lucid/.well-known/openid-configuration"
+client_id = "lucid-beacon"
+client_secret = "YOUR_CLIENT_SECRET_FROM_KEYCLOAK"  # Replace with actual secret
+redirect_uri = "http://localhost:8080/auth/callback"
+# Optional: restrict to specific domains or emails
+# allowed_domains = ["example.com"]
+# allowed_emails = ["contractor@external.com"]
+
+[auth.jwt]
+secret = "dev-secret-DO-NOT-USE-IN-PRODUCTION"
+issuer = "lucid"
+audience = "lucid-api"
+expiry_hours = 24
+----
+
+[WARNING]
+====
+**Do not commit `config.toml` to version control** — it contains secrets. The `.gitignore` should already exclude it.
+
+For development, hardcoding a simple JWT secret like `"dev-secret-DO-NOT-USE-IN-PRODUCTION"` is fine. In production, use a strong random secret.
+====
+
+== Running Lucid
+
+=== Apply Database Migrations
+
+[source,bash]
+----
+cd db/schema
+diesel migration run
+cd ../..
+----
+
+=== Start the Beacon Server
+
+[source,bash]
+----
+cargo run
+----
+
+You should see output like:
+
+[source,text]
+----
+[2026-02-14T12:34:56Z INFO  lucid_beacon] Starting Lucid Beacon on 0.0.0.0:8080
+----
+
+=== Test Authentication Flow
+
+1. Navigate to `http://localhost:8080/auth/login`
+2. You'll be redirected to Keycloak
+3. Log in with a test user (e.g., `alice` / `password`)
+4. Keycloak redirects back to Lucid's callback endpoint
+5. If successful, you receive a JSON response with a JWT:
+
+[source,json]
+----
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 86400
+}
+----
+
+6. Use this token in API requests:
+
+[source,bash]
+----
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+     http://localhost:8080/v1/hosts
+----
+
+== Common Development Tasks
+
+=== Reset Database
+
+[source,bash]
+----
+cd db/schema
+diesel migration redo  # Revert and re-run the last migration
+# or
+diesel database reset  # Drop and recreate the entire database
+diesel migration run
+----
+
+=== View Logs
+
+If using `file_path` in logging config:
+
+[source,bash]
+----
+tail -f /tmp/lucid-beacon.log
+----
+
+If logging to stdout (omit `file_path` in config), logs appear in the `cargo run` terminal.
+
+=== Create Additional Test Users
+
+Follow the "Create Test Users" steps in the Keycloak Configuration section.
+
+=== Test Email Restrictions
+
+To test `allowed_domains` or `allowed_emails`:
+
+1. Update `config.toml` to restrict access:
++
+[source,toml]
+----
+[auth.oidc]
+allowed_domains = ["example.com"]
+----
+
+2. Restart Lucid (`cargo run`)
+3. Create a Keycloak user with email `alice@external.com`
+4. Try logging in — should get `403 Forbidden` with message "email not allowed"
+5. Create a user with `bob@example.com` — should succeed
+
+== Troubleshooting
+
+=== "Connection refused" When Starting Lucid
+
+**Cause:** PostgreSQL not running.
+
+**Fix:**
+
+[source,bash]
+----
+docker compose up -d postgres
+----
+
+=== "Invalid client credentials" in Keycloak
+
+**Cause:** Client secret mismatch between `config.toml` and Keycloak.
+
+**Fix:**
+
+1. Go to Keycloak → Clients → `lucid-beacon` → Credentials tab
+2. Copy the client secret
+3. Update `config.toml` `auth.oidc.client_secret`
+4. Restart Lucid
+
+=== "Redirect URI mismatch" Error
+
+**Cause:** The redirect URI in your OIDC request doesn't match what's registered in Keycloak.
+
+**Fix:**
+
+1. Check `config.toml` `auth.oidc.redirect_uri`
+2. Go to Keycloak → Clients → `lucid-beacon` → Settings
+3. Ensure **Valid redirect URIs** includes `http://localhost:8080/auth/callback`
+4. Restart Lucid
+
+=== Database Migration Errors
+
+**Cause:** Schema version mismatch or missing diesel.
+
+**Fix:**
+
+[source,bash]
+----
+# Ensure diesel is installed via mise
+mise doctor
+
+# Check current migration status
+cd db/schema
+diesel migration list
+
+# Revert and re-run if needed
+diesel migration redo
+----
+
+=== Keycloak Admin Console Not Loading
+
+**Cause:** Keycloak container not running or still initialising.
+
+**Fix:**
+
+[source,bash]
+----
+# Check container status
+docker compose ps
+
+# Check Keycloak logs
+docker compose logs keycloak
+
+# Keycloak can take 30-60s to fully start on first run
+----
+
+== Next Steps
+
+- **Explore the API:** Check `beacon/api/src/lib.rs` for available endpoints
+- **Add more collectors:** Implement host inventory gathering (Phase 1 of roadmap)
+- **Write tests:** See `cargo test --help` and follow patterns in `auth/src/authn/jwt.rs`
+- **Read the auth docs:** See `docs/auth.adoc` for detailed authentication architecture
+
+== Stopping Services
+
+[source,bash]
+----
+# Stop Lucid (Ctrl+C in cargo run terminal)
+
+# Stop infrastructure
+docker compose down
+
+# To also remove database volumes (DELETES ALL DATA)
+docker compose down -v
+----

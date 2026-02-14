@@ -6,7 +6,10 @@ use http::HeaderValue;
 use lucid_types::authn::cookies::parse_cookies;
 use lucid_uuid_kinds::{ConsoleSessionIdUuid, GenericUuid, OrganisationIdUuid, UserIdUuid};
 
-use crate::authn::{self, Actor, Details, Reason, external::{HttpAuthnScheme, SchemeResult}};
+use crate::authn::{
+    self, Actor, Details, Reason,
+    external::{HttpAuthnScheme, SchemeResult},
+};
 
 pub trait Session {
     fn id(&self) -> ConsoleSessionIdUuid;
@@ -35,8 +38,7 @@ pub trait SessionStore {
 }
 
 pub const SESSION_COOKIE_COOKIE_NAME: &str = "session";
-pub const SESSION_COOKIE_SCHEME_NAME: authn::SchemeName =
-    authn::SchemeName::SessionCookie;
+pub const SESSION_COOKIE_SCHEME_NAME: authn::SchemeName = authn::SchemeName::SessionCookie;
 
 /// Generate session cookie header
 pub fn session_cookie_header_value(
@@ -54,17 +56,12 @@ pub fn session_cookie_header_value(
 
     // this will only fail if we mess up the formatting here
     http::HeaderValue::from_str(&value).map_err(|_e| {
-        HttpError::for_internal_error(format!(
-            "unsupported cookie value: {:#}",
-            value,
-        ))
+        HttpError::for_internal_error(format!("unsupported cookie value: {:#}", value,))
     })
 }
 
 /// Generate session cookie with empty token and max-age=0 so browser deletes it
-pub fn clear_session_cookie_header_value(
-    secure: bool,
-) -> Result<HeaderValue, HttpError> {
+pub fn clear_session_cookie_header_value(secure: bool) -> Result<HeaderValue, HttpError> {
     session_cookie_header_value("", Duration::zero(), secure)
 }
 
@@ -81,11 +78,7 @@ where
         SESSION_COOKIE_SCHEME_NAME
     }
 
-    async fn authn(
-        &self,
-        ctx: &T,
-        request: &dropshot::RequestInfo
-    ) -> SchemeResult {
+    async fn authn(&self, ctx: &T, request: &dropshot::RequestInfo) -> SchemeResult {
         let token = match get_token_from_cookie(request.headers()) {
             Some(token) => token,
             None => return SchemeResult::NotRequested,
@@ -93,9 +86,11 @@ where
 
         let session = match ctx.session_fetch(token.clone()).await {
             Some(session) => session,
-            None => return SchemeResult::Failed(Reason::UnknownActor {
-                actor: token.to_owned(),
-            }),
+            None => {
+                return SchemeResult::Failed(Reason::UnknownActor {
+                    actor: token.to_owned(),
+                });
+            }
         };
 
         let actor = Actor::OrganisationUser {
@@ -124,7 +119,7 @@ where
                     session.last_seen_at(),
                     now,
                     ctx.session_idle_timeout(),
-                )
+                ),
             });
         }
 
@@ -148,7 +143,7 @@ where
                     session.created_at(),
                     now,
                     ctx.session_absolute_timeout(),
-                )
+                ),
             });
         }
 
@@ -168,10 +163,9 @@ where
     }
 }
 
-fn get_token_from_cookie(
-    headers: &http::HeaderMap<http::HeaderValue>,
-) -> Option<String> {
+fn get_token_from_cookie(headers: &http::HeaderMap<http::HeaderValue>) -> Option<String> {
     parse_cookies(headers).ok().and_then(|cs| {
-        cs.get(SESSION_COOKIE_COOKIE_NAME).map(|c| c.value().to_string())
+        cs.get(SESSION_COOKIE_COOKIE_NAME)
+            .map(|c| c.value().to_string())
     })
 }

@@ -1,48 +1,39 @@
 use diesel::{Insertable, Queryable, Selectable};
 use lucid_db_macros::Resource;
-use lucid_db_schema::schema::{organisation_users, users};
-use lucid_types::dto::params::{self, UserCreateAuthMode};
-use lucid_uuid_kinds::{OrganisationIdKind, UserIdKind, UserIdUuid};
+use lucid_db_schema::schema::users;
+use lucid_uuid_kinds::UserIdUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::DbTypedUuid;
-
-#[derive(Clone, Debug, Queryable, Insertable, Selectable, Resource, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Clone, Debug, Queryable, Insertable, Selectable, Resource, Serialize, Deserialize, JsonSchema,
+)]
 #[diesel(table_name = users)]
 #[resource(uuid_kind = UserIdKind, deletable = false)]
 pub struct User {
     #[diesel(embed)]
     pub identity: UserIdentity,
     pub email: String,
-    pub external_id: Option<String>,
-    pub password_hash: Option<String>,
-    pub system_admin: bool,
-}
-
-#[derive(Clone, Debug, Queryable, Insertable, Selectable, Serialize, Deserialize, JsonSchema)]
-#[diesel(table_name = organisation_users)]
-pub struct OrganisationUser {
-    pub user_id: DbTypedUuid<UserIdKind>,
-    pub organisation_id: DbTypedUuid<OrganisationIdKind>,
+    pub external_id: String,
+    pub display_name: Option<String>,
+    pub is_owner: bool,
 }
 
 impl User {
-    pub fn new(params: params::UserCreate) -> Self {
-        Self::new_with_id(UserIdUuid::new_v4(), params)
-    }
-
-    pub fn new_with_id(id: UserIdUuid, params: params::UserCreate) -> Self {
+    /// Create a new user from OIDC claims
+    pub fn new(
+        id: UserIdUuid,
+        external_id: String,
+        email: String,
+        display_name: Option<String>,
+        is_owner: bool,
+    ) -> Self {
         Self {
             identity: UserIdentity::new(id),
-            email: params.email,
-            external_id: if let UserCreateAuthMode::External { external_id } = params.auth_mode {
-                Some(external_id)
-            } else {
-                None
-            },
-            password_hash: None,
-            system_admin: false,
+            email,
+            external_id,
+            display_name,
+            is_owner,
         }
     }
 }

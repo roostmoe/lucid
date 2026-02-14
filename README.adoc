@@ -7,6 +7,36 @@
 An infrastructure management tool for systems administrators, built to be easy
 to deploy and use.
 
+Lucid is a self-hosted alternative to Red Hat Insights for managing Linux fleets (RHEL, Rocky, AlmaLinux, and beyond). It provides inventory tracking, vulnerability management, compliance scanning, and remediation workflows.
+
+== Features
+
+- **Inventory Management** — Track hosts, packages, network configuration, and hardware details
+- **OIDC Authentication** — Integrate with your existing identity provider (Keycloak, Google, Okta, etc.)
+- **JWT-based API Access** — Stateless authentication for REST API
+- **mTLS Agent Authentication** — Secure agent-to-server communication
+- **Single-organisation Deployment** — One Lucid instance per organisation (no multi-tenancy complexity)
+
+For roadmap and planned features, see link:./docs/roadmap.adoc[`docs/roadmap.adoc`].
+
+== Quick Start
+
+See link:./docs/local-development.adoc[`docs/local-development.adoc`] for detailed setup instructions.
+
+[source,shell]
+----
+# Start PostgreSQL and Keycloak
+docker compose up -d
+
+# Run database migrations
+cd db/schema && diesel migration run && cd ../..
+
+# Build and run Lucid
+cargo run
+----
+
+Lucid runs on `http://localhost:8080`. Configure OIDC and other settings in `config.toml` (see link:./docs/auth.adoc[`docs/auth.adoc`]).
+
 == Requirements
 
 This project requires a few development tools to be worked on:

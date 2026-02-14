@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use lucid_uuid_kinds::{GenericUuid};
+use lucid_uuid_kinds::GenericUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -27,7 +27,7 @@ pub trait Resource {
             id: self.id().into_untyped_uuid(),
             created_at: self.created_at(),
             updated_at: self.updated_at(),
-            deleted_at: self.deleted_at()
+            deleted_at: self.deleted_at(),
         }
     }
 }

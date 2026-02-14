@@ -1,14 +1,15 @@
-use crate::context::{Context as Ctx};
-use dropshot::{ApiDescription, HttpError, HttpResponseCreated, HttpResponseHeaders, HttpResponseOk, RequestContext, TypedBody};
-
-use lucid_beacon_api::{BeaconApi, beacon_api_mod};
-use lucid_types::dto::{params, views};
+use crate::context::Context as Ctx;
+use dropshot::{
+    ApiDescription, ClientErrorStatusCode, HttpError, HttpResponseOk, HttpResponseSeeOther, Query,
+    RequestContext,
+};
+use lucid_beacon_api::{AuthCallbackQuery, BeaconApi, beacon_api_mod};
+use lucid_types::dto::views;
 
 type BeaconApiDescription = ApiDescription<Ctx>;
 
 pub(crate) fn api() -> BeaconApiDescription {
-    beacon_api_mod::api_description::<BeaconApiImpl>()
-        .expect("registering entrypoints")
+    beacon_api_mod::api_description::<BeaconApiImpl>().expect("registering entrypoints")
 }
 
 enum BeaconApiImpl {}
@@ -16,31 +17,80 @@ enum BeaconApiImpl {}
 impl BeaconApi for BeaconApiImpl {
     type Context = Ctx;
 
-    async fn console_session_start(
+    async fn auth_login(
         rqctx: RequestContext<Self::Context>,
-        body: TypedBody<params::LoginParams>,
-    ) -> Result<HttpResponseOk<views::LoginResponse>, HttpError> {
-        Ok(rqctx
-            .context()
-            .beacon
-            .console_session_start(body.into_inner())
-            .await?)
+    ) -> Result<HttpResponseSeeOther, HttpError> {
+        let apictx = rqctx.context();
+
+        let (auth_url, csrf_token, nonce) = apictx.beacon.oidc.authorization_url();
+
+        // Store state for callback validation
+        apictx.beacon.oidc_state.store(csrf_token, nonce).await;
+
+        dropshot::http_response_see_other(auth_url)
     }
 
-    async fn console_session_login(
+    async fn auth_callback(
         rqctx: RequestContext<Self::Context>,
-        body: TypedBody<params::LoginSessionParams>,
-    ) -> Result<HttpResponseHeaders<HttpResponseCreated<()>>, HttpError> {
-        Ok(rqctx
-            .context()
-            .beacon
-            .console_session_login(body.into_inner())
-            .await?)
-    }
+        query: Query<AuthCallbackQuery>,
+    ) -> Result<HttpResponseOk<views::TokenResponse>, HttpError> {
+        let apictx = rqctx.context();
+        let query = query.into_inner();
 
-    async fn console_session_logout(
-        rqctx: RequestContext<Self::Context>,
-    ) -> Result<HttpResponseOk<()>, HttpError> {
-        Ok(HttpResponseOk(()))
+        // Validate CSRF token and get nonce
+        let nonce = apictx
+            .beacon
+            .oidc_state
+            .get_and_remove(&query.state)
+            .await
+            .ok_or_else(|| {
+                HttpError::for_client_error(
+                    None,
+                    ClientErrorStatusCode::BAD_REQUEST,
+                    "invalid or expired state".to_string(),
+                )
+            })?;
+
+        // Exchange code for user info
+        let user_info = apictx
+            .beacon
+            .oidc
+            .exchange_code(&query.code, &nonce)
+            .await
+            .map_err(|e| HttpError::for_internal_error(format!("oidc error: {e}")))?;
+
+        // Validate email is allowed
+        if !apictx.beacon.oidc.is_email_allowed(&user_info.email) {
+            return Err(HttpError::for_client_error(
+                None,
+                ClientErrorStatusCode::FORBIDDEN,
+                "email not allowed".to_string(),
+            ));
+        }
+
+        // Upsert user in database
+        let user = apictx
+            .beacon
+            .datastore
+            .user_upsert_from_oidc(
+                &user_info.external_id,
+                &user_info.email,
+                user_info.display_name.as_deref(),
+            )
+            .await
+            .map_err(|e| HttpError::for_internal_error(format!("db error: {e}")))?;
+
+        // Create JWT
+        let token = apictx
+            .beacon
+            .jwt
+            .create_token(user.identity.id.into(), &user.email)
+            .map_err(|e| HttpError::for_internal_error(format!("jwt error: {e}")))?;
+
+        Ok(HttpResponseOk(views::TokenResponse {
+            access_token: token,
+            token_type: "Bearer".to_string(),
+            expires_in: 86400, // 24 hours
+        }))
     }
 }

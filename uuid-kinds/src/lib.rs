@@ -1,6 +1,6 @@
 use newtype_uuid_macros::impl_typed_uuid_kinds;
 
-pub use newtype_uuid::{GenericUuid, TypedUuid, TypedUuidTag, TypedUuidKind, TagError, ParseError};
+pub use newtype_uuid::{GenericUuid, ParseError, TagError, TypedUuid, TypedUuidKind, TypedUuidTag};
 
 impl_typed_uuid_kinds! {
     settings = {

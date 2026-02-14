@@ -1,18 +1,26 @@
-use dropshot::{EndpointTagPolicy, HttpError, HttpResponseCreated, HttpResponseHeaders, HttpResponseOk, RequestContext, TypedBody};
+use dropshot::{
+    EndpointTagPolicy, HttpError, HttpResponseOk, HttpResponseSeeOther, Query, RequestContext,
+};
 use dropshot_api_manager_types::api_versions;
-use lucid_types::dto::{params, views};
+use lucid_types::dto::views;
+use schemars::JsonSchema;
+use serde::Deserialize;
 
-api_versions!([
-    (1, INITIAL_API),
-]);
+api_versions!([(1, INITIAL_API),]);
+
+#[derive(Deserialize, JsonSchema)]
+pub struct AuthCallbackQuery {
+    pub code: String,
+    pub state: String, // CSRF token
+}
 
 #[dropshot::api_description {
     tag_config = {
         allow_other_tags = false,
         policy = EndpointTagPolicy::ExactlyOne,
         tags = {
-            "console-auth" = {
-                description = "API for console authentication",
+            "auth" = {
+                description = "Authentication endpoints (OIDC)",
             }
         }
     }
@@ -20,31 +28,24 @@ api_versions!([
 pub trait BeaconApi {
     type Context;
 
+    /// Initiate OIDC login flow
     #[endpoint {
-        method = POST,
-        path = "/v1/login/start",
-        tags = ["console-auth"],
+        method = GET,
+        path = "/auth/login",
+        tags = ["auth"],
     }]
-    async fn console_session_start(
+    async fn auth_login(
         rqctx: RequestContext<Self::Context>,
-        body: TypedBody<params::LoginParams>,
-    ) -> Result<HttpResponseOk<views::LoginResponse>, HttpError>;
+    ) -> Result<HttpResponseSeeOther, HttpError>;
 
+    /// Handle OIDC callback
     #[endpoint {
-        method = POST,
-        path = "/v1/login/complete",
-        tags = ["console-auth"],
+        method = GET,
+        path = "/auth/callback",
+        tags = ["auth"],
     }]
-    async fn console_session_login(
+    async fn auth_callback(
         rqctx: RequestContext<Self::Context>,
-        body: TypedBody<params::LoginSessionParams>,
-    ) -> Result<HttpResponseHeaders<HttpResponseCreated<()>>, HttpError>;
-
-    #[endpoint {
-        method = POST,
-        path = "/v1/logout",
-        tags = ["console-auth"],
-    }]
-    async fn console_session_logout(rqctx: RequestContext<Self::Context>)
-        -> Result<HttpResponseOk<()>, HttpError>;
+        query: Query<AuthCallbackQuery>,
+    ) -> Result<HttpResponseOk<views::TokenResponse>, HttpError>;
 }

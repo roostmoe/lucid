@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
-use lucid_auth::{authn::{self, external::{Authenticator, HttpAuthnScheme, session_cookie::HttpAuthnSessionCookie}}, authz, context::OpContext};
+use lucid_auth::authn::{JwtManager, OidcClient};
 use lucid_beacon_config::BeaconConfig;
-use lucid_db::datastore::DataStore;
 use lucid_common::api::error::Error;
+use lucid_db::datastore::DataStore;
 
-pub(crate) mod console_session;
+pub(crate) mod oidc_state;
 
 pub struct Beacon {
     pub datastore: Arc<DataStore>,
-    pub authn: Arc<Authenticator<DataStore>>,
-    pub authz: Arc<authz::Authz>,
+    pub jwt: Arc<JwtManager>,
+    pub oidc: Arc<OidcClient>,
+    pub oidc_state: Arc<oidc_state::OidcStateCache>,
     pub(crate) config: BeaconConfig,
-    pub(crate) opctx_external_authn: OpContext,
 }
 
 impl Beacon {
@@ -20,26 +20,35 @@ impl Beacon {
         config: BeaconConfig,
         datastore: Arc<DataStore>,
     ) -> Result<Arc<Beacon>, Error> {
-        let schemes: Vec<Box<dyn HttpAuthnScheme<DataStore>>> = vec![
-            Box::new(HttpAuthnSessionCookie),
-        ];
+        let jwt_config = lucid_auth::authn::JwtConfig {
+            secret: config.auth.jwt.secret.clone(),
+            issuer: config.auth.jwt.issuer.clone(),
+            audience: config.auth.jwt.audience.clone(),
+            expiry_hours: config.auth.jwt.expiry_hours,
+        };
+        let jwt = Arc::new(JwtManager::new(jwt_config));
 
-        let authn = Authenticator::new(schemes);
-        let authz = Arc::new(authz::Authz::new());
+        let oidc_config = lucid_auth::authn::OidcConfig {
+            discovery_url: config.auth.oidc.discovery_url.clone(),
+            client_id: config.auth.oidc.client_id.clone(),
+            client_secret: config.auth.oidc.client_secret.clone(),
+            redirect_uri: config.auth.oidc.redirect_uri.clone(),
+            allowed_domains: config.auth.oidc.allowed_domains.clone().unwrap_or_default(),
+            allowed_emails: config.auth.oidc.allowed_emails.clone().unwrap_or_default(),
+            owner_email: None,
+        };
+        let oidc = Arc::new(OidcClient::new(oidc_config).await.map_err(|e| {
+            Error::internal_error(&format!("failed to initialise OIDC client: {e}"))
+        })?);
 
-        let opctx_external_authn = OpContext::for_background(
-            authz.clone(),
-            authn::Context::external_authn(),
-            Arc::clone(&datastore).clone()
-            as Arc<dyn lucid_auth::storage::Storage>,
-        );
+        let oidc_state = Arc::new(oidc_state::OidcStateCache::new());
 
         Ok(Arc::new(Self {
             config,
             datastore,
-            authn: Arc::new(authn),
-            authz,
-            opctx_external_authn,
+            jwt,
+            oidc,
+            oidc_state,
         }))
     }
 }

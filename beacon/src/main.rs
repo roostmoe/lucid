@@ -10,8 +10,8 @@ use tracing_subscriber::{layer::SubscriberExt, registry, util::SubscriberInitExt
 use crate::context::Context;
 
 mod api;
-mod context;
 mod app;
+mod context;
 
 #[tokio::main]
 async fn main() {
@@ -19,9 +19,8 @@ async fn main() {
     let _ = args.next();
     let config_path = args.next();
 
-    let config = lucid_beacon_config::BeaconConfig::new(
-        config_path.map(|path| vec![path]),
-    ).expect("Failed to load configuration");
+    let config = lucid_beacon_config::BeaconConfig::new(config_path.map(|path| vec![path]))
+        .expect("Failed to load configuration");
 
     let dropshot_logger = setup_tracing(config.clone().logging);
 
@@ -30,11 +29,7 @@ async fn main() {
         .expect("building context");
 
     let http_server = {
-        dropshot::ServerBuilder::new(
-            api::http_entrypoints::api(),
-            ctx,
-            dropshot_logger,
-        )
+        dropshot::ServerBuilder::new(api::http_entrypoints::api(), ctx, dropshot_logger)
             .config(ConfigDropshot {
                 bind_address: config.server.bind_addr,
                 ..Default::default()

@@ -44,7 +44,9 @@ pub enum Error {
 
 impl Error {
     pub fn internal_error(internal_message: &str) -> Error {
-        Error::Internal { internal_message: internal_message.to_owned() }
+        Error::Internal {
+            internal_message: internal_message.to_owned(),
+        }
     }
 
     pub fn internal_anyhow(message: String, source: anyhow::Error) -> Self {
@@ -66,7 +68,10 @@ pub enum LookupType {
 
 impl LookupType {
     pub fn into_not_found(&self, resource_type: ResourceType) -> Error {
-        Error::ObjectNotFound { resource_type: resource_type, lookup_type: self.clone() }
+        Error::ObjectNotFound {
+            resource_type: resource_type,
+            lookup_type: self.clone(),
+        }
     }
 }
 
@@ -107,12 +112,14 @@ impl From<Error> for HttpError {
                 )
             }
 
-            Error::ObjectAlreadyExists { type_name, object_name } =>
-                HttpError::for_client_error(
-                    Some(String::from("ObjectAlreadyExists")),
-                    dropshot::ClientErrorStatusCode::CONFLICT,
-                    format!("{} with name \"{}\" already exists", type_name, object_name),
-                ),
+            Error::ObjectAlreadyExists {
+                type_name,
+                object_name,
+            } => HttpError::for_client_error(
+                Some(String::from("ObjectAlreadyExists")),
+                dropshot::ClientErrorStatusCode::CONFLICT,
+                format!("{} with name \"{}\" already exists", type_name, object_name),
+            ),
 
             Error::NotFound {
                 error_code,

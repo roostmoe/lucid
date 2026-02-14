@@ -10,9 +10,7 @@ pub mod cookies;
 /// This is a closed set of schemes. Adding a new scheme requires updating this
 /// enum, which ensures all consumers (config parsing, authn, audit logging)
 /// handle it explicitly.
-#[derive(
-    Clone, Copy, Debug, DeserializeFromStr, Eq, PartialEq, SerializeDisplay,
-)]
+#[derive(Clone, Copy, Debug, DeserializeFromStr, Eq, PartialEq, SerializeDisplay)]
 pub enum SchemeName {
     /// Session cookie authentication (web console)
     SessionCookie,

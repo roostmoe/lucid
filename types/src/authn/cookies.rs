@@ -2,8 +2,8 @@ use anyhow::Context;
 use async_trait::async_trait;
 use cookie::{Cookie, CookieJar, ParseError};
 use dropshot::{
-    ApiEndpointBodyContentType, ExtensionMode, ExtractorMetadata, HttpError,
-    RequestContext, ServerContext, SharedExtractor,
+    ApiEndpointBodyContentType, ExtensionMode, ExtractorMetadata, HttpError, RequestContext,
+    ServerContext, SharedExtractor,
 };
 use newtype_derive::{NewtypeDeref, NewtypeFrom};
 
@@ -12,11 +12,10 @@ pub fn parse_cookies(
 ) -> Result<CookieJar, ParseError> {
     let mut cookies = CookieJar::new();
     for header in headers.get_all("Cookie") {
-        let raw_str =
-            match header.to_str().context("parsing Cookie header as UTF-8") {
-                Ok(string) => string,
-                Err(_) => continue,
-            };
+        let raw_str = match header.to_str().context("parsing Cookie header as UTF-8") {
+            Ok(string) => string,
+            Err(_) => continue,
+        };
         for chunk in raw_str.split(';').map(|s| s.trim()) {
             if let Ok(cookie) = Cookie::parse(chunk) {
                 cookies.add_original(cookie.into_owned());
@@ -35,14 +34,11 @@ impl SharedExtractor for Cookies {
     async fn from_request<Context: ServerContext>(
         rqctx: &RequestContext<Context>,
     ) -> Result<Self, HttpError> {
-        let cookies = parse_cookies(rqctx.request.headers())
-            .unwrap_or_else(|_| CookieJar::new());
+        let cookies = parse_cookies(rqctx.request.headers()).unwrap_or_else(|_| CookieJar::new());
         Ok(cookies.into())
     }
 
-    fn metadata(
-        _body_content_type: ApiEndpointBodyContentType,
-    ) -> ExtractorMetadata {
+    fn metadata(_body_content_type: ApiEndpointBodyContentType) -> ExtractorMetadata {
         ExtractorMetadata {
             extension_mode: ExtensionMode::None,
             parameters: vec![],

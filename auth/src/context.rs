@@ -1,9 +1,13 @@
-use std::{collections::BTreeMap, fmt::Debug, sync::Arc, time::{Instant, SystemTime}};
+use std::{
+    collections::BTreeMap,
+    sync::Arc,
+    time::{Instant, SystemTime},
+};
 
 use lucid_common::api::error::Error;
+use lucid_uuid_kinds::UserIdUuid;
 
-use crate::{authn, authz::AuthorizedResource, storage::Storage};
-use crate::authz;
+use crate::authn;
 
 // ---------------------------------------------------------------------------
 // OpContext
@@ -11,13 +15,11 @@ use crate::authz;
 
 /// Operational context threaded through every datastore call.
 ///
-/// Carries the authenticated actor, their loaded permissions, timing metadata,
-/// and the kind of operation being performed. Authorisation checks happen here
-/// — not at the HTTP layer.
+/// Carries the authenticated actor and timing metadata for the operation.
+/// No more authz or organisation stuff — just simple user identity.
 pub struct OpContext {
     pub authn: Arc<authn::Context>,
 
-    authz: authz::Context,
     created_instant: Instant,
     created_walltime: SystemTime,
     metadata: BTreeMap<String, String>,
@@ -33,97 +35,29 @@ pub enum OpKind {
 }
 
 impl OpContext {
-    pub fn new<E>(
-        auth_fn: impl FnOnce() -> Result<(Arc<authn::Context>, authz::Context), E>,
+    pub fn new(
+        authn: Arc<authn::Context>,
         metadata_loader: impl FnOnce(&mut BTreeMap<String, String>),
         kind: OpKind,
-    ) -> Result<Self, E> {
+    ) -> Self {
         let created_instant = Instant::now();
         let created_walltime = SystemTime::now();
-        let (authn, authz) = auth_fn()?;
         let mut metadata = OpContext::metadata_for_authn(&authn);
         metadata_loader(&mut metadata);
 
-        Ok(OpContext {
-            authz,
-            authn,
-            created_instant,
-            created_walltime,
-            metadata,
-            kind,
-        })
-    }
-
-    pub async fn new_async<E>(
-        auth_fut: impl std::future::Future<
-            Output = Result<(Arc<authn::Context>, authz::Context), E>,
-        >,
-        metadata_loader: impl FnOnce(&mut BTreeMap<String, String>),
-        kind: OpKind,
-    ) -> Result<Self, E> {
-        let created_instant = Instant::now();
-        let created_walltime = SystemTime::now();
-        let (authn, authz) = auth_fut.await?;
-        let mut metadata = OpContext::metadata_for_authn(&authn);
-        metadata_loader(&mut metadata);
-
-        Ok(OpContext {
-            authz,
-            authn,
-            created_instant,
-            created_walltime,
-            metadata,
-            kind,
-        })
-    }
-
-    pub async fn authorize<Resource>(
-        &self,
-        action: authz::Action,
-        resource: &Resource,
-    ) -> Result<(), Error>
-    where
-        Resource: AuthorizedResource + Debug + Clone,
-    {
-        self.authz.authorize(self, action, resource.clone()).await
-    }
-
-    /// Create an [`OpContext`] for a background job that inherits the
-    /// permissions of the original triggering request.
-    pub fn for_background(
-        authz: Arc<authz::Authz>,
-        authn: authn::Context,
-        datastore: Arc<dyn Storage>,
-    ) -> OpContext {
-        let created_instant = Instant::now();
-        let created_walltime = SystemTime::now();
-        let authn = Arc::new(authn);
-        let authz = authz::Context::new(
-            Arc::clone(&authn),
-            Arc::clone(&authz),
-            Arc::clone(&datastore),
-        );
         OpContext {
             authn,
-            authz,
             created_instant,
             created_walltime,
-            metadata: BTreeMap::new(),
-            kind: OpKind::Background,
+            metadata,
+            kind,
         }
     }
 
     /// Create an [`OpContext`] for tests.
-    ///
-    /// The caller supplies a pre-built authz context so tests can control
-    /// exactly what permissions are available.
-    pub fn for_test(
-        authn: Arc<authn::Context>,
-        authz: authz::Context,
-    ) -> Self {
+    pub fn for_test(authn: Arc<authn::Context>) -> Self {
         Self {
             authn,
-            authz,
             created_instant: Instant::now(),
             created_walltime: SystemTime::now(),
             metadata: BTreeMap::new(),
@@ -131,17 +65,14 @@ impl OpContext {
         }
     }
 
-    fn metadata_for_authn(
-        authn: &authn::Context,
-    ) -> BTreeMap<String, String> {
+    fn metadata_for_authn(authn: &authn::Context) -> BTreeMap<String, String> {
         let mut metadata = BTreeMap::new();
 
-        if let Some(actor) = &authn.actor() {
-            metadata.insert("authenticated".to_string(), "true".to_string());
-            metadata.insert("actor".to_string(), format!("{:?}", actor));
-        } else {
-            metadata.insert("authenticated".to_string(), "false".to_string());
-        }
+        metadata.insert(
+            "authenticated".to_string(),
+            authn.actor().is_authenticated().to_string(),
+        );
+        metadata.insert("actor".to_string(), format!("{:?}", authn.actor()));
 
         metadata
     }
@@ -152,14 +83,26 @@ impl OpContext {
     ) {
         let request = &rqctx.request;
         metadata.insert(String::from("request_id"), rqctx.request_id.clone());
-        metadata
-            .insert(String::from("http_method"), request.method().to_string());
+        metadata.insert(String::from("http_method"), request.method().to_string());
         metadata.insert(String::from("http_uri"), request.uri().to_string());
     }
 
     // ------------------------------------------------------------------
     // Accessors
     // ------------------------------------------------------------------
+
+    pub fn actor(&self) -> &authn::Actor {
+        self.authn.actor()
+    }
+
+    /// Get the user ID, or error if not authenticated
+    pub fn user_id(&self) -> Result<UserIdUuid, Error> {
+        self.actor()
+            .user_id()
+            .ok_or_else(|| Error::Unauthenticated {
+                internal_message: "user ID required".to_string(),
+            })
+    }
 
     pub fn kind(&self) -> OpKind {
         self.kind
@@ -176,17 +119,12 @@ impl OpContext {
     pub fn metadata(&self) -> &BTreeMap<String, String> {
         &self.metadata
     }
-
-    pub fn datastore(&self) -> &Arc<dyn Storage> {
-        self.authz.datastore()
-    }
 }
 
 impl Clone for OpContext {
     fn clone(&self) -> Self {
         Self {
             authn: Arc::clone(&self.authn),
-            authz: self.authz.clone(),
             created_instant: self.created_instant,
             created_walltime: self.created_walltime,
             metadata: self.metadata.clone(),

@@ -1,7 +1,14 @@
-use std::{collections::{BTreeMap, HashSet}, fs::{self, File}, io::Write};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs::{self, File},
+    io::Write,
+};
 
 use lucid_beacon_config::BeaconConfig;
-use schemars::{schema::{InstanceType, RootSchema, Schema, SchemaObject}, schema_for};
+use schemars::{
+    schema::{InstanceType, RootSchema, Schema, SchemaObject},
+    schema_for,
+};
 
 fn generate_config_docs(schema: &RootSchema) -> String {
     let mut output = String::new();
@@ -53,12 +60,16 @@ fn generarte_section(
             return;
         }
         processed.insert(def_name.to_string());
-        definitions.get(def_name).and_then(|s| Some(s.clone().into_object()))
+        definitions
+            .get(def_name)
+            .and_then(|s| Some(s.clone().into_object()))
     } else {
         Some(obj.clone())
     };
 
-    if resolved.is_none() { return };
+    if resolved.is_none() {
+        return;
+    };
     let resolved = resolved.unwrap();
 
     let header_level = "=".repeat(depth + 2);
@@ -124,18 +135,22 @@ fn get_example_value(obj: &SchemaObject) -> String {
     }
 }
 
-
 fn main() {
     let schema = schema_for!(BeaconConfig);
     let docs = generate_config_docs(&schema);
 
     let out_dir = format!("{}/gen", env!("CARGO_MANIFEST_DIR"));
-    if fs::exists(format!("{}/gen", env!("CARGO_MANIFEST_DIR"))).expect("Failed to check if gen dir exists") {
+    if fs::exists(format!("{}/gen", env!("CARGO_MANIFEST_DIR")))
+        .expect("Failed to check if gen dir exists")
+    {
         fs::remove_dir_all(out_dir.clone()).expect("Failed to delete output directory");
     }
 
     fs::create_dir(out_dir.clone()).expect("Failed to create gen dir");
-    let mut buffer = File::create(format!("{}/config.adoc", out_dir)).expect("Failed to create openapi.json file");
+    let mut buffer = File::create(format!("{}/config.adoc", out_dir))
+        .expect("Failed to create openapi.json file");
 
-    buffer.write_all(docs.as_bytes()).expect("Failed to write configuration docs");
+    buffer
+        .write_all(docs.as_bytes())
+        .expect("Failed to write configuration docs");
 }

@@ -1,0 +1,273 @@
+= Authentication Architecture
+:toc: macro
+:toc-title: Contents
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
+
+toc::[]
+
+== Overview
+
+Lucid uses OpenID Connect (OIDC) for user authentication, issuing JWT tokens for API access. This approach:
+
+- Delegates authentication to a trusted identity provider (e.g., Keycloak, Google, Okta)
+- Issues JWTs for stateless API authentication
+- Supports email-based access control (domain allowlists and specific email addresses)
+- Automatically grants owner status to the first user who logs in
+
+[NOTE]
+====
+Lucid is designed for self-hosted, single-organisation deployments. Multi-tenancy was removed in favour of simplicity — one Lucid instance per organisation.
+====
+
+== Authentication Flow
+
+=== 1. User Initiates Login
+
+User navigates to `/auth/login`, which redirects to the configured OIDC provider with:
+
+- `client_id` — identifies Lucid to the identity provider
+- `redirect_uri` — where the provider sends the user after authentication
+- `state` — CSRF protection token (stored server-side)
+- `nonce` — additional replay protection (stored server-side, validated in ID token)
+
+=== 2. User Authenticates with OIDC Provider
+
+User logs in at the identity provider (e.g., Keycloak). The provider validates credentials and redirects back to Lucid's callback endpoint (`/auth/callback`).
+
+=== 3. Lucid Exchanges Authorisation Code
+
+Lucid receives:
+
+- `code` — authorisation code from the provider
+- `state` — CSRF token (must match the one stored in step 1)
+
+Lucid then:
+
+1. Validates the `state` parameter matches stored value
+2. Exchanges the `code` for an ID token and access token
+3. Validates the ID token (signature, issuer, audience, nonce)
+4. Extracts user information (`sub`, `email`, optional `name`)
+
+=== 4. Email Authorisation Check
+
+Before allowing access, Lucid checks if the user's email is permitted via:
+
+- **Domain allowlist** (`auth.oidc.allowed_domains`) — e.g., `["example.com"]`
+- **Email allowlist** (`auth.oidc.allowed_emails`) — e.g., `["alice@example.com"]`
+
+If the email doesn't match either list, authentication fails with `403 Forbidden`.
+
+=== 5. User Upsert
+
+Lucid looks up the user by their OIDC `sub` claim (external ID). If not found, a new user is created. On subsequent logins, the user's email and display name are updated.
+
+**First-user-becomes-owner logic:**
+
+- Before inserting/updating, Lucid counts existing users
+- If `user_count == 0`, the new user is granted `is_owner = true`
+- Subsequent users are created as regular users
+
+Owners have full administrative privileges (exact scope TBD as RBAC develops).
+
+=== 6. JWT Issuance
+
+Lucid generates a JWT containing:
+
+[source,json]
+----
+{
+  "sub": "<user_id>",
+  "email": "user@example.com",
+  "iss": "lucid",
+  "aud": "lucid-api",
+  "iat": 1234567890,
+  "exp": 1234654290
+}
+----
+
+This token is returned to the client and used for all subsequent API requests.
+
+== Configuration
+
+=== OIDC Settings
+
+Located in `config.toml` under `[auth.oidc]`:
+
+[source,toml]
+----
+[auth.oidc]
+# OIDC provider discovery URL
+discovery_url = "http://localhost:8090/realms/lucid/.well-known/openid-configuration"
+
+# OAuth2 client ID (created in your identity provider)
+client_id = "lucid-beacon"
+
+# OAuth2 client secret (created in your identity provider)
+client_secret = "your-client-secret-here"
+
+# Where the identity provider redirects after authentication
+redirect_uri = "http://localhost:8080/auth/callback"
+
+# Optional: Allow only users from these email domains
+allowed_domains = ["example.com", "trusted-partner.com"]
+
+# Optional: Allow specific email addresses (takes precedence over domain list)
+allowed_emails = ["contractor@external.com"]
+----
+
+**Configuration notes:**
+
+- `discovery_url` should point to your provider's `.well-known/openid-configuration` endpoint
+- `redirect_uri` must exactly match a URI registered in your OIDC client config
+- If both `allowed_domains` and `allowed_emails` are empty/unset, **all emails are allowed**
+- `allowed_emails` can grant access to individuals outside allowed domains
+
+=== JWT Settings
+
+Located in `config.toml` under `[auth.jwt]`:
+
+[source,toml]
+----
+[auth.jwt]
+# Secret used to sign JWTs (MUST be kept secure)
+secret = "your-randomly-generated-secret-here"
+
+# Issuer claim (identifies Lucid as token issuer)
+issuer = "lucid"
+
+# Audience claim (identifies intended token consumers)
+audience = "lucid-api"
+
+# Token expiry in hours
+expiry_hours = 24
+----
+
+**Configuration notes:**
+
+- `secret` should be a long, random string (e.g., `openssl rand -base64 64`)
+- **Keep `secret` secure** — anyone with this can forge JWTs
+- Token expiry defaults to 24 hours; adjust based on your security requirements
+
+=== Complete Example
+
+.`config.toml`
+[source,toml]
+----
+[server]
+bind_addr = "0.0.0.0:8080"
+
+[logging]
+level = "info"
+format = "json"
+file_path = "/var/log/lucid/beacon.log"
+
+[database]
+url = "postgres://postgres:postgres@localhost/lucid"
+
+[auth.oidc]
+discovery_url = "http://localhost:8090/realms/lucid/.well-known/openid-configuration"
+client_id = "lucid-beacon"
+client_secret = "zXcV8n2mK9pLqWrT4yUiO6jHgF3dS7aE"
+redirect_uri = "http://localhost:8080/auth/callback"
+allowed_domains = ["mycompany.com"]
+
+[auth.jwt]
+secret = "fK8nV3mP2qL9rW5tY7uI4oJ6hG1dS0aZ"
+issuer = "lucid"
+audience = "lucid-api"
+expiry_hours = 24
+----
+
+== Using JWT Tokens
+
+Once authenticated, clients include the JWT in the `Authorization` header:
+
+[source,http]
+----
+GET /v1/hosts HTTP/1.1
+Host: lucid.example.com
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+----
+
+Lucid validates:
+
+- Token signature (using the configured `secret`)
+- Token has not expired (`exp` claim)
+- Issuer matches `auth.jwt.issuer`
+- Audience matches `auth.jwt.audience`
+
+If validation succeeds, the user ID from the `sub` claim is used to build an operational context (`OpContext`) for authorisation and audit logging.
+
+== Security Considerations
+
+=== JWT Secret Management
+
+- **Never commit secrets to version control**
+- Use environment variables or secret management tools (Vault, AWS Secrets Manager, etc.)
+- Rotate secrets periodically (requires re-issuing all active tokens)
+
+=== HTTPS in Production
+
+OIDC and JWT rely on secure transport. In production:
+
+- Use HTTPS for the Lucid API
+- Ensure `redirect_uri` uses HTTPS
+- Configure your OIDC provider to require HTTPS
+
+=== Email Domain Validation
+
+Domain allowlisting only checks the email domain — it does **not** verify the email is from a legitimate source. If your OIDC provider allows self-service sign-ups, an attacker could register `attacker@mycompany.com` at a public provider.
+
+**Mitigation:** Use an OIDC provider that enforces email domain ownership (e.g., Google Workspace, corporate LDAP/SAML).
+
+== Troubleshooting
+
+=== "Invalid or expired state" Error
+
+**Cause:** CSRF token mismatch, often from:
+
+- Stale browser tabs/bookmarks pointing directly to `/auth/callback`
+- Session state not persisted (restart between login initiation and callback)
+
+**Fix:** Always initiate login via `/auth/login`, not the callback URL directly.
+
+=== "Email not allowed" Error
+
+**Cause:** User's email doesn't match `allowed_domains` or `allowed_emails`.
+
+**Fix:**
+
+1. Check the user's email in OIDC provider
+2. Verify `allowed_domains` and `allowed_emails` config
+3. Add the domain or specific email to the allowlist
+
+=== "OIDC not yet implemented" Error
+
+**Cause:** The OIDC client is stubbed out (development placeholder).
+
+**Fix:** This indicates issue #38 was not fully implemented. Check that `auth/src/authn/oidc.rs` contains a real OIDC client implementation (e.g., using `openidconnect` crate).
+
+=== JWT Validation Failures
+
+**Symptoms:** API returns `401 Unauthorized` despite having a token.
+
+**Common causes:**
+
+- Token expired (check `exp` claim vs. current time)
+- Issuer/audience mismatch (token issued by different config than server expects)
+- Secret changed after token was issued
+
+**Fix:**
+
+- Check token claims with https://jwt.io (paste token, verify `exp`, `iss`, `aud`)
+- Ensure `auth.jwt.secret` hasn't changed since login
+- If secret was rotated, user must log in again
+
+== Future Work
+
+- **Token refresh** — currently tokens expire after `expiry_hours` with no refresh mechanism
+- **Revocation** — no way to invalidate tokens before expiry (requires session store or token blacklist)
+- **Role-based access control (RBAC)** — owner flag exists, but fine-grained permissions TBD
+- **OIDC claims mapping** — extract roles/groups from ID token for RBAC

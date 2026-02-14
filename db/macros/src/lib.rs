@@ -25,10 +25,7 @@ impl syn::parse::Parse for NameValue {
 ///
 /// As an example, for an attribute like `#[diesel(foo = bar)]`, we can find this
 /// attribute by calling `get_nv_attr(&item.attrs, "foo")`.
-fn get_diesel_nv_attr(
-    attrs: &[syn::Attribute],
-    name: &str,
-) -> Option<NameValue> {
+fn get_diesel_nv_attr(attrs: &[syn::Attribute], name: &str) -> Option<NameValue> {
     attrs
         .iter()
         .filter(|attr| attr.path().is_ident("diesel"))
@@ -37,13 +34,14 @@ fn get_diesel_nv_attr(
 }
 
 /// Looks up a named field within a struct.
-fn get_field_with_name<'a>(
-    data: &'a DataStruct,
-    name: &str,
-) -> Option<&'a syn::Field> {
+fn get_field_with_name<'a>(data: &'a DataStruct, name: &str) -> Option<&'a syn::Field> {
     if let Fields::Named(ref data_fields) = data.fields {
         data_fields.named.iter().find(|field| {
-            if let Some(ident) = &field.ident { ident == name } else { false }
+            if let Some(ident) = &field.ident {
+                ident == name
+            } else {
+                false
+            }
         })
     } else {
         None
@@ -51,9 +49,7 @@ fn get_field_with_name<'a>(
 }
 
 #[proc_macro_derive(Resource, attributes(resource))]
-pub fn resource_target(
-    input: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
+pub fn resource_target(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive_impl(input.into())
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
@@ -69,9 +65,7 @@ struct MacroAttributes {
 }
 
 impl MacroAttributes {
-    fn parse_from_attrs(
-        attrs: &[syn::Attribute],
-    ) -> syn::Result<Self> {
+    fn parse_from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         let inner_attrs = attrs
             .iter()
             .filter_map(|attr| {
@@ -94,10 +88,7 @@ impl MacroAttributes {
     }
 
     fn deletable(&self) -> bool {
-        self.deletable.as_ref().map_or_else(
-            || true,
-            |w| w.value
-        )
+        self.deletable.as_ref().map_or_else(|| true, |w| w.value)
     }
 }
 
@@ -105,17 +96,16 @@ fn derive_impl(input: TokenStream) -> syn::Result<TokenStream> {
     let item = syn::parse2::<DeriveInput>(input)?;
     let name = &item.ident;
 
-    let table_nv =
-        get_diesel_nv_attr(&item.attrs, "table_name").ok_or_else(|| {
-            Error::new(
-                item.span(),
-                format!(
-                    "Resource needs 'table_name' attribute.\n\
+    let table_nv = get_diesel_nv_attr(&item.attrs, "table_name").ok_or_else(|| {
+        Error::new(
+            item.span(),
+            format!(
+                "Resource needs 'table_name' attribute.\n\
                     Try adding #[diesel(table_name = your_table_name)] to {}.",
-                    name,
-                ),
-            )
-        })?;
+                name,
+            ),
+        )
+    })?;
     let table_name = table_nv.value;
 
     let input = MacroAttributes::parse_from_attrs(&item.attrs)?;
@@ -140,7 +130,10 @@ fn derive_impl(input: TokenStream) -> syn::Result<TokenStream> {
         return Ok(build(name, &table_name, &field.ty, &uuid_ty, deletable));
     }
 
-    Err(Error::new(item.span(), "Resource can only be derived for structs"))
+    Err(Error::new(
+        item.span(),
+        "Resource can only be derived for structs",
+    ))
 }
 
 fn build(
@@ -173,8 +166,7 @@ fn build_identity(
 
     let external_uuid_ty = uuid_ty.external();
     let db_uuid_ty = uuid_ty.db();
-    let convert_external_to_db =
-        uuid_ty.external_to_db_lucid_db_models(quote! { id });
+    let convert_external_to_db = uuid_ty.external_to_db_lucid_db_models(quote! { id });
 
     let mut deleted_at_def = quote! {};
     let mut deleted_at_new = quote! {};
@@ -225,8 +217,7 @@ fn build_impl(
     let identity_name = format_ident!("{}Identity", struct_name);
 
     let external_uuid_ty = uuid_ty.external();
-    let convert_db_to_external =
-        uuid_ty.db_to_external(quote! { self.identity.id });
+    let convert_db_to_external = uuid_ty.db_to_external(quote! { self.identity.id });
 
     let mut deleted_at_def = quote! { None };
     if deletable {

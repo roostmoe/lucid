@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
   "auth",
-  "auth/macros",
 
   "beacon",
   "beacon/api",
@@ -12,7 +11,6 @@ members = [
   "common/macros",
 
   "db",
-  "db/fixed-data",
   "db/macros",
   "db/models",
   "db/schema",
@@ -50,7 +48,6 @@ newtype-uuid-macros = "0.1.0"
 parse-display = "0.10.0"
 proc-macro2 = "1.0"
 quote = "1.0"
-oso = "0.27.3"
 schemars = { version = "0.8", features = ["chrono", "uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.145"
@@ -71,10 +68,13 @@ uuid = { version = "1.17.0", features = ["serde", "v4"] }
 heck = "0.5"
 rand = "0.9.1"
 hex = "0.4.3"
+openidconnect = { version = "4", features = ["reqwest"] }
+jsonwebtoken = "9"
+moka = { version = "0.12", features = ["future"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 
 # lucid monorepo
 lucid-auth = { path = "auth" }
-lucid-auth-macros = { path = "auth/macros" }
 
 lucid-beacon-api = { path = "beacon/api" }
 lucid-beacon-config = { path = "beacon/config" }
@@ -83,7 +83,6 @@ lucid-common = { path = "common" }
 lucid-macros-common = { path = "common/macros" }
 
 lucid-db = { path = "db" }
-lucid-db-fixed-data = { path = "db/fixed-data" }
 lucid-db-macros = { path = "db/macros" }
 lucid-db-models = { path = "db/models" }
 lucid-db-schema = { path = "db/schema" }

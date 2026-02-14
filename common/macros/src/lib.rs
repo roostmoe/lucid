@@ -65,10 +65,7 @@ impl PrimaryKeyType {
     /// expression as input.
     ///
     /// This is specialized for the lucid-db-models crate.
-    pub fn external_to_db_lucid_db_models(
-        &self,
-        tokens: TokenStream,
-    ) -> TokenStream {
+    pub fn external_to_db_lucid_db_models(&self, tokens: TokenStream) -> TokenStream {
         match self {
             PrimaryKeyType::Standard(_) => tokens,
             PrimaryKeyType::TypedUuid { .. } => {

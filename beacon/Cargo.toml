@@ -17,6 +17,8 @@ tracing-slog.workspace = true
 slog.workspace = true
 slog-async.workspace = true
 rand.workspace = true
+moka.workspace = true
+openidconnect.workspace = true
 
 lucid-auth.workspace = true
 lucid-common.workspace = true

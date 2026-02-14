@@ -10,7 +10,7 @@ pub const ENV_PREFIX: &str = "BEACON";
 pub struct BeaconConfig {
     pub server: ServerConfig,
     pub logging: LoggingConfig,
-    pub session: SessionConfig,
+    pub auth: AuthConfig,
     pub database: DatabaseConfig,
 }
 
@@ -118,44 +118,72 @@ pub enum LogFormat {
     Pretty,
 }
 
-/// The configuration for user sessions, including timeouts and expiration
-/// policies.
+/// Configuration for authentication (OIDC + JWT)
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-pub struct SessionConfig {
-    /// The idle timeout for a session represented in seconds.
-    #[schemars(default = "df_idle_timeout_seconds")]
-    pub idle_timeout_seconds: i64,
-
-    /// The absolute maximum duration of a session in seconds. After this time,
-    /// the session will expire irrespective of activity.
-    #[schemars(default = "df_absolute_timeout_seconds")]
-    pub absolute_timeout_seconds: i64,
-
-    /// Whether to set the session cookie as _secure_, which means it will only
-    /// be sent over HTTPS connections. This should be `true` in production and
-    /// `false` in development.
-    #[schemars(default = "df_session_secure")]
-    pub secure: bool,
+pub struct AuthConfig {
+    pub oidc: OidcConfig,
+    pub jwt: JwtConfig,
 }
 
-fn df_idle_timeout_seconds() -> i64 {
-    3600 // 1 hour
-}
-
-fn df_absolute_timeout_seconds() -> i64 {
-    86400 // 24 hours
-}
-
-fn df_session_secure() -> bool {
-    true
-}
-
-impl Default for SessionConfig {
+impl Default for AuthConfig {
     fn default() -> Self {
         Self {
-            idle_timeout_seconds: df_idle_timeout_seconds(),
-            absolute_timeout_seconds: df_absolute_timeout_seconds(),
-            secure: df_session_secure(),
+            oidc: OidcConfig::default(),
+            jwt: JwtConfig::default(),
+        }
+    }
+}
+
+/// OIDC provider configuration
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct OidcConfig {
+    /// OIDC discovery URL (e.g., https://accounts.google.com/.well-known/openid-configuration)
+    pub discovery_url: String,
+    /// OAuth2 client ID
+    pub client_id: String,
+    /// OAuth2 client secret
+    pub client_secret: String,
+    /// Redirect URI for OAuth2 callback
+    pub redirect_uri: String,
+    /// Optional list of allowed email domains (e.g., ["example.com"])
+    pub allowed_domains: Option<Vec<String>>,
+    /// Optional list of allowed email addresses
+    pub allowed_emails: Option<Vec<String>>,
+}
+
+impl Default for OidcConfig {
+    fn default() -> Self {
+        Self {
+            discovery_url: String::new(),
+            client_id: String::new(),
+            client_secret: String::new(),
+            redirect_uri: "http://localhost:8080/auth/callback".to_string(),
+            allowed_domains: None,
+            allowed_emails: None,
+        }
+    }
+}
+
+/// JWT configuration
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct JwtConfig {
+    /// JWT signing secret
+    pub secret: String,
+    /// JWT issuer claim
+    pub issuer: String,
+    /// JWT audience claim
+    pub audience: String,
+    /// Token expiry in hours
+    pub expiry_hours: i64,
+}
+
+impl Default for JwtConfig {
+    fn default() -> Self {
+        Self {
+            secret: String::new(),
+            issuer: "lucid".to_string(),
+            audience: "lucid-api".to_string(),
+            expiry_hours: 24,
         }
     }
 }

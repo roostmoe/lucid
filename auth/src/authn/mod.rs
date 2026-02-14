@@ -1,52 +1,76 @@
 use std::fmt::Debug;
 
-use lucid_db_fixed_data::user_builtin::USER_EXTERNAL_AUTHN;
-use lucid_uuid_kinds::{BuiltInUserUuid, GenericUuid, OrganisationIdUuid, UserIdUuid};
+use lucid_uuid_kinds::UserIdUuid;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-pub mod external;
+// pub mod external;  // TODO: remove or rewrite for JWT
+pub mod jwt;
+pub mod oidc;
+
+pub use jwt::{Claims, JwtConfig, JwtManager};
+pub use oidc::{OidcClient, OidcConfig, OidcUserInfo};
+
+/// Who is performing an operation?
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum Actor {
+    /// Authenticated user
+    User { user_id: UserIdUuid },
+    /// Not authenticated
+    Unauthenticated,
+}
+
+impl Actor {
+    pub fn user_id(&self) -> Option<UserIdUuid> {
+        match self {
+            Actor::User { user_id } => Some(*user_id),
+            Actor::Unauthenticated => None,
+        }
+    }
+
+    pub fn is_authenticated(&self) -> bool {
+        matches!(self, Actor::User { .. })
+    }
+}
 
 /// Describes how the actor performing the current operation is authenticated
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Context {
-    /// Describes whether the user is authenticated and provides more
-    /// information depending on which case it is.
-    kind: Kind,
+    /// The actor performing this operation
+    actor: Actor,
 
     /// List of authentication schemes tried.
     schemes_tried: Vec<SchemeName>,
 }
 
 impl Context {
-    pub fn actor(&self) -> Option<&Actor> {
-        self.actor_required().ok()
-    }
-
-    pub fn actor_required(
-        &self
-    ) -> Result<&Actor, lucid_common::api::error::Error> {
-        match &self.kind {
-            Kind::Authenticated(Details { actor, .. }) => Ok(actor),
-            Kind::Unauthenticated => Err(
-                lucid_common::api::error::Error::Unauthenticated {
-                    internal_message: "Actor required".to_string(),
-                }
-            )
+    /// Create a context for an authenticated user
+    pub fn user(user_id: UserIdUuid) -> Self {
+        Self {
+            actor: Actor::User { user_id },
+            schemes_tried: vec![],
         }
     }
 
-    /// Returns the ID of the credential used to authenticate, if any.
-    ///
-    /// For session auth, this is the session ID. For access token auth, this is
-    /// the token ID. For SCIM auth, this is the SCIM token ID.
-    /// Not set for spoof auth, built-in users, or unauthenticated requests.
-    pub fn credential_id(&self) -> Option<Uuid> {
-        match &self.kind {
-            Kind::Authenticated(Details { credential_id, .. }, ..) => {
-                *credential_id
-            }
-            Kind::Unauthenticated => None,
+    /// Create a context for an unauthenticated request
+    pub fn unauthenticated() -> Self {
+        Self {
+            actor: Actor::Unauthenticated,
+            schemes_tried: vec![],
+        }
+    }
+
+    /// Get the actor for this context
+    pub fn actor(&self) -> &Actor {
+        &self.actor
+    }
+
+    /// Get the actor, or error if not authenticated
+    pub fn actor_required(&self) -> Result<&Actor, lucid_common::api::error::Error> {
+        match &self.actor {
+            Actor::User { .. } => Ok(&self.actor),
+            Actor::Unauthenticated => Err(lucid_common::api::error::Error::Unauthenticated {
+                internal_message: "Actor required".to_string(),
+            }),
         }
     }
 
@@ -60,136 +84,11 @@ impl Context {
     /// If the user is authenticated, return the last scheme in the list of
     /// schemes tried, which is the one that worked.
     pub fn scheme_used(&self) -> Option<&SchemeName> {
-        match &self.kind {
-            Kind::Authenticated(..) => self.schemes_tried().last(),
-            Kind::Unauthenticated => None,
+        if self.actor.is_authenticated() {
+            self.schemes_tried().last()
+        } else {
+            None
         }
-    }
-
-    pub fn external_authn() -> Context {
-        Context::context_for_builtin_user(USER_EXTERNAL_AUTHN.id)
-    }
-
-    fn context_for_builtin_user(user_builtin_id: BuiltInUserUuid) -> Context {
-        Context {
-            kind: Kind::Authenticated(
-                Details {
-                    actor: Actor::UserBuiltin { user_builtin_id },
-                    credential_id: None,
-                },
-            ),
-            schemes_tried: Vec::new(),
-        }
-    }
-
-    /// Returns an unauthenticated context for use internally
-    pub fn internal_unauthenticated() -> Context {
-        Context { kind: Kind::Unauthenticated, schemes_tried: vec![] }
-    }
-}
-
-// Describes whether an actor is authenticated or not and provides more
-// information depending on which case it is.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum Kind {
-    /// Client did not attempt to authenticate
-    Unauthenticated,
-    /// Client successfully authenticated
-    Authenticated(Details),
-}
-
-/// Describes the actor that was authenticated
-///
-/// This could eventually be extended to include more information about the
-/// actor, such as the time of authentication, a remote IP, etc.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Details {
-    /// the actor performing the request
-    pub actor: Actor,
-    /// ID of the credential used to authenticate the actor. (session ID, access
-    /// token ID, certificate ID, etc.).
-    pub credential_id: Option<Uuid>
-}
-
-/// Who is performing an operation?
-#[derive(Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-pub enum Actor {
-    OrganisationUser { user_id: UserIdUuid, organisation_id: OrganisationIdUuid },
-    UserBuiltin { user_builtin_id: BuiltInUserUuid },
-}
-
-impl Actor {
-    pub fn user_id(&self) -> Option<UserIdUuid> {
-        match self {
-            Actor::OrganisationUser { user_id, .. } => Some(*user_id),
-            Actor::UserBuiltin { .. } => None,
-        }
-    }
-
-    pub fn organisation_id(&self) -> Option<OrganisationIdUuid> {
-        match self {
-            Actor::OrganisationUser { organisation_id, .. } => Some(*organisation_id),
-            Actor::UserBuiltin { .. } => None,
-        }
-    }
-
-    pub fn id_and_type_for_role_binding(
-        &self,
-    ) -> Option<(Uuid, lucid_db_models::IdentityPrincipalType)> {
-        match &self {
-            Actor::OrganisationUser { user_id, .. } => Some((
-                user_id.into_untyped_uuid(),
-                lucid_db_models::IdentityPrincipalType::User,
-            )),
-            Actor::UserBuiltin { user_builtin_id } => Some((
-                user_builtin_id.into_untyped_uuid(),
-                lucid_db_models::IdentityPrincipalType::BuiltinUser,
-            )),
-        }
-    }
-}
-
-impl Debug for Actor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Actor::OrganisationUser { user_id, organisation_id } => f
-                .debug_struct("OrganisationUser")
-                .field("user_id", user_id)
-                .field("organisation_id", organisation_id)
-                .finish(),
-            Actor::UserBuiltin { user_builtin_id } => f
-                .debug_struct("UserBuiltin")
-                .field("user_builtin_id", user_builtin_id)
-                .finish()
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ConsoleSession {
-    pub console_session: lucid_db_models::ConsoleSession,
-    pub organisation_id: OrganisationIdUuid,
-}
-
-impl external::session_cookie::Session for ConsoleSession {
-    fn id(&self) -> lucid_uuid_kinds::ConsoleSessionIdUuid {
-        lucid_types::identity::Resource::id(&self.console_session)
-    }
-
-    fn user_id(&self) -> UserIdUuid {
-        self.console_session.user_id.into()
-    }
-
-    fn organisation_id(&self) -> OrganisationIdUuid {
-        self.organisation_id
-    }
-
-    fn last_seen_at(&self) -> chrono::DateTime<chrono::Utc> {
-        self.console_session.last_seen_at
-    }
-
-    fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
-        lucid_types::identity::Resource::created_at(&self.console_session)
     }
 }
 
@@ -233,7 +132,7 @@ pub enum Reason {
     UnknownError {
         #[source]
         source: lucid_common::api::error::Error,
-    }
+    },
 }
 
 impl From<Error> for dropshot::HttpError {
@@ -243,14 +142,75 @@ impl From<Error> for dropshot::HttpError {
                 dropshot::HttpError::for_bad_request(None, format!("{:#}", e))
             }
 
-            e @ Reason::UnknownActor { .. }
-            | e @ Reason::BadCredentials { .. } => dropshot::HttpError::from(
-                lucid_common::api::error::Error::Unauthenticated {
-                    internal_message: format!("{:#}", e)
-                },
-            ),
-            
+            e @ Reason::UnknownActor { .. } | e @ Reason::BadCredentials { .. } => {
+                dropshot::HttpError::from(lucid_common::api::error::Error::Unauthenticated {
+                    internal_message: format!("{:#}", e),
+                })
+            }
+
             Reason::UnknownError { source } => source.into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use lucid_uuid_kinds::GenericUuid;
+
+    fn test_user_id() -> UserIdUuid {
+        use uuid::Uuid;
+        UserIdUuid::from_untyped_uuid(
+            Uuid::parse_str("01234567-89ab-cdef-0123-456789abcdef").unwrap(),
+        )
+    }
+
+    #[test]
+    fn test_actor_user_creation() {
+        let user_id = test_user_id();
+        let actor = Actor::User { user_id };
+
+        assert_eq!(actor.user_id(), Some(user_id));
+        assert!(actor.is_authenticated());
+    }
+
+    #[test]
+    fn test_actor_unauthenticated() {
+        let actor = Actor::Unauthenticated;
+
+        assert_eq!(actor.user_id(), None);
+        assert!(!actor.is_authenticated());
+    }
+
+    #[test]
+    fn test_context_user() {
+        let user_id = test_user_id();
+        let ctx = Context::user(user_id);
+
+        assert_eq!(ctx.actor().user_id(), Some(user_id));
+        assert!(ctx.actor_required().is_ok());
+        assert_eq!(ctx.actor_required().unwrap().user_id(), Some(user_id));
+    }
+
+    #[test]
+    fn test_context_unauthenticated() {
+        let ctx = Context::unauthenticated();
+
+        assert_eq!(ctx.actor().user_id(), None);
+        let result = ctx.actor_required();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_actor_required_returns_error_for_unauthenticated() {
+        let ctx = Context::unauthenticated();
+        let result = ctx.actor_required();
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(
+            err,
+            lucid_common::api::error::Error::Unauthenticated { .. }
+        ));
     }
 }

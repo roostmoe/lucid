@@ -4,12 +4,17 @@ This document provides guidelines for AI coding agents working in the Lucid code
 
 ## Project Context
 
-- **Type**: Multi-tenant web service/daemon with host agent component
+- **Type**: Self-hosted web service/daemon with host agent component (single-organisation deployment)
 - **Stack**: Rust 2024 edition, Dropshot (HTTP API), Diesel (PostgreSQL ORM), Tokio (async runtime)
 - **Architecture**: Workspace with 13+ crates (auth, beacon, db, types, common, etc.)
 - **Database**: PostgreSQL 18 with Diesel migrations
-- **Auth**: mTLS for agent auth, JWT + Oso/Polar for API authz
+- **Auth**: OIDC (OpenID Connect) for user authentication, JWT tokens for API access, mTLS for agent-to-server communication
 - **Current phase**: Phase 1 (Inventory & Agent Core) - see `docs/roadmap.adoc`
+
+[NOTE]
+====
+**Multi-tenancy removed:** Lucid is designed for single-organisation deployments. One instance per organisation. User identity and access control still exist (first user becomes owner), but organisation/tenant isolation was removed for simplicity.
+====
 
 ## Build, Test, and Lint Commands
 
@@ -76,7 +81,7 @@ diesel migration run
 ### Development Environment
 
 ```bash
-# Start PostgreSQL container
+# Start PostgreSQL + Keycloak containers
 docker compose up -d
 
 # Stop containers
@@ -86,6 +91,8 @@ docker compose down
 mise doctor
 mise list
 ```
+
+See `docs/local-development.adoc` for complete setup instructions including Keycloak OIDC configuration.
 
 ## Code Style Guidelines
 
@@ -313,8 +320,34 @@ Use **British English** in comments and documentation:
 ## Critical Notes
 
 - **Thread `OpContext` everywhere** - it carries authn/authz context
-- **Authorization at the datastore layer**, not HTTP layer
+- **Authorisation at the datastore layer**, not HTTP layer
 - **All DB operations must go through `OpContext`**
 - **Use typed UUIDs** (`DbTypedUuid<T>`) for compile-time safety
 - **Run `cargo fmt` before every commit**
 - **British spelling in all text**
+- **Authentication via OIDC + JWT** - see `docs/auth.adoc` for architecture details
+
+## Landing the Plane (Session Completion)
+
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
+
+**CRITICAL RULES:**
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds

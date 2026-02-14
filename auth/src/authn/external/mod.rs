@@ -8,16 +8,14 @@ use crate::authn::{self, Details, Reason};
 pub mod session_cookie;
 
 pub struct Authenticator<T> {
-    allowed_schemes: Vec<Box<dyn HttpAuthnScheme<T>>>
+    allowed_schemes: Vec<Box<dyn HttpAuthnScheme<T>>>,
 }
 
 impl<T> Authenticator<T>
 where
-    T: Send + Sync + 'static
+    T: Send + Sync + 'static,
 {
-    pub fn new(
-        allowed_schemes: Vec<Box<dyn HttpAuthnScheme<T>>>,
-    ) -> Authenticator<T> {
+    pub fn new(allowed_schemes: Vec<Box<dyn HttpAuthnScheme<T>>>) -> Authenticator<T> {
         Authenticator { allowed_schemes }
     }
 
@@ -53,21 +51,27 @@ where
             let result = scheme_impl.authn(ctx, request).await;
             match result {
                 SchemeResult::Failed(reason) => {
-                    return Err(authn::Error { reason, schemes_tried })
-                },
+                    return Err(authn::Error {
+                        reason,
+                        schemes_tried,
+                    });
+                }
 
                 SchemeResult::Authenticated(details) => {
                     return Ok(authn::Context {
                         kind: authn::Kind::Authenticated(details),
                         schemes_tried,
-                    })
-                },
+                    });
+                }
 
                 SchemeResult::NotRequested => (),
             }
         }
 
-        Ok(authn::Context { kind: authn::Kind::Unauthenticated, schemes_tried })
+        Ok(authn::Context {
+            kind: authn::Kind::Unauthenticated,
+            schemes_tried,
+        })
     }
 }
 
@@ -80,11 +84,7 @@ where
     fn name(&self) -> authn::SchemeName;
 
     /// Locate credentials in the HTTP request and attempt to verify them
-    async fn authn(
-        &self,
-        ctx: &T,
-        request: &dropshot::RequestInfo,
-    ) -> SchemeResult;
+    async fn authn(&self, ctx: &T, request: &dropshot::RequestInfo) -> SchemeResult;
 }
 
 /// Result returned by each authentication scheme when trying to authenticate a
