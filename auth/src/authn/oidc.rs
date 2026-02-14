@@ -56,9 +56,9 @@ impl OidcClient {
         }
 
         // Check domain list
-        if let Some(domain) = email.split('@').nth(1).filter(|d| {
-            self._config.allowed_domains.contains(&d.to_string())
-        }) {
+        if let Some(domain) = email.split('@').nth(1)
+            && self._config.allowed_domains.contains(&domain.to_string())
+        {
             return true;
         }
 
