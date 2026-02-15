@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use lucid_uuid_kinds::UserIdUuid;
+use lucid_uuid_kinds::UserUuid;
 use serde::{Deserialize, Serialize};
 
 // pub mod external;  // TODO: remove or rewrite for JWT
@@ -14,13 +14,13 @@ pub use oidc::{OidcClient, OidcConfig, OidcUserInfo};
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Actor {
     /// Authenticated user
-    User { user_id: UserIdUuid },
+    User { user_id: UserUuid },
     /// Not authenticated
     Unauthenticated,
 }
 
 impl Actor {
-    pub fn user_id(&self) -> Option<UserIdUuid> {
+    pub fn user_id(&self) -> Option<UserUuid> {
         match self {
             Actor::User { user_id } => Some(*user_id),
             Actor::Unauthenticated => None,
@@ -44,7 +44,7 @@ pub struct Context {
 
 impl Context {
     /// Create a context for an authenticated user
-    pub fn user(user_id: UserIdUuid) -> Self {
+    pub fn user(user_id: UserUuid) -> Self {
         Self {
             actor: Actor::User { user_id },
             schemes_tried: vec![],
@@ -158,9 +158,9 @@ mod test {
     use super::*;
     use lucid_uuid_kinds::GenericUuid;
 
-    fn test_user_id() -> UserIdUuid {
+    fn test_user_id() -> UserUuid {
         use uuid::Uuid;
-        UserIdUuid::from_untyped_uuid(
+        UserUuid::from_untyped_uuid(
             Uuid::parse_str("01234567-89ab-cdef-0123-456789abcdef").unwrap(),
         )
     }

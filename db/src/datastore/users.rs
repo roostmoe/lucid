@@ -2,13 +2,13 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use lucid_db_models::User;
 use lucid_db_schema::schema::users;
-use lucid_uuid_kinds::{GenericUuid, UserIdUuid};
+use lucid_uuid_kinds::{GenericUuid, UserUuid};
 
 use crate::datastore::DataStore;
 
 impl DataStore {
     /// Get a user by ID
-    pub async fn user_get(&self, user_id: UserIdUuid) -> anyhow::Result<Option<User>> {
+    pub async fn user_get(&self, user_id: UserUuid) -> anyhow::Result<Option<User>> {
         let mut conn = self.pool.get().await?;
 
         let user = users::table

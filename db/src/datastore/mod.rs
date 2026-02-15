@@ -3,6 +3,7 @@ use diesel_async::{
     pooled_connection::{AsyncDieselConnectionManager, bb8::Pool},
 };
 
+pub mod hosts;
 pub mod users;
 
 pub struct DataStore {

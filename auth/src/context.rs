@@ -5,7 +5,7 @@ use std::{
 };
 
 use lucid_common::api::error::Error;
-use lucid_uuid_kinds::UserIdUuid;
+use lucid_uuid_kinds::UserUuid;
 
 use crate::authn;
 
@@ -96,7 +96,7 @@ impl OpContext {
     }
 
     /// Get the user ID, or error if not authenticated
-    pub fn user_id(&self) -> Result<UserIdUuid, Error> {
+    pub fn user_id(&self) -> Result<UserUuid, Error> {
         self.actor()
             .user_id()
             .ok_or_else(|| Error::Unauthenticated {

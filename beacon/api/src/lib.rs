@@ -19,6 +19,10 @@ pub struct AuthCallbackQuery {
         allow_other_tags = false,
         policy = EndpointTagPolicy::ExactlyOne,
         tags = {
+            "inventory" = {
+                description = "Inventory management endpoints",
+            },
+
             "auth" = {
                 description = "Authentication endpoints (OIDC)",
             }
@@ -27,6 +31,16 @@ pub struct AuthCallbackQuery {
 }]
 pub trait BeaconApi {
     type Context;
+
+    /// List hosts
+    #[endpoint {
+        method = GET,
+        path = "/hosts",
+        tags = ["inventory"],
+    }]
+    async fn list_hosts(
+        rqctx: RequestContext<Self::Context>,
+    ) -> Result<HttpResponseOk<views::HostListResponse>, HttpError>;
 
     /// Initiate OIDC login flow
     #[endpoint {

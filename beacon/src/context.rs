@@ -6,7 +6,7 @@ use lucid_auth::context::{OpContext, OpKind};
 use lucid_beacon_config::BeaconConfig;
 use lucid_common::api::error::Error;
 use lucid_db::datastore::DataStore;
-use lucid_uuid_kinds::UserIdUuid;
+use lucid_uuid_kinds::UserUuid;
 
 use crate::app::Beacon;
 
@@ -32,7 +32,6 @@ impl Context {
 /// Authenticate the incoming request via JWT and build an [`OpContext`].
 ///
 /// This is the primary entry point for authenticated endpoints.
-#[allow(dead_code)]
 pub(crate) async fn op_context_for_external_api(
     rqctx: &RequestContext<Context>,
 ) -> Result<OpContext, HttpError> {
@@ -56,7 +55,7 @@ pub(crate) async fn op_context_for_external_api(
                 )
             })?;
 
-            let user_id = claims.sub.parse::<UserIdUuid>().map_err(|_| {
+            let user_id = claims.sub.parse::<UserUuid>().map_err(|_| {
                 HttpError::for_internal_error("invalid user id in token".to_string())
             })?;
 

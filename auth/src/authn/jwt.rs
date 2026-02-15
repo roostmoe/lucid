@@ -1,6 +1,6 @@
 use chrono::{Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use lucid_uuid_kinds::UserIdUuid;
+use lucid_uuid_kinds::UserUuid;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -53,7 +53,7 @@ impl JwtManager {
         }
     }
 
-    pub fn create_token(&self, user_id: UserIdUuid, email: &str) -> Result<String, Error> {
+    pub fn create_token(&self, user_id: UserUuid, email: &str) -> Result<String, Error> {
         let now = Utc::now();
         let exp = now + Duration::hours(self.config.expiry_hours);
 
@@ -96,8 +96,8 @@ mod test {
         }
     }
 
-    fn test_user_id() -> UserIdUuid {
-        UserIdUuid::from_untyped_uuid(
+    fn test_user_id() -> UserUuid {
+        UserUuid::from_untyped_uuid(
             Uuid::parse_str("01234567-89ab-cdef-0123-456789abcdef").unwrap(),
         )
     }

@@ -1,7 +1,7 @@
 use diesel::{Insertable, Queryable, Selectable};
 use lucid_db_macros::Resource;
 use lucid_db_schema::schema::users;
-use lucid_uuid_kinds::UserIdUuid;
+use lucid_uuid_kinds::UserUuid;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
     Clone, Debug, Queryable, Insertable, Selectable, Resource, Serialize, Deserialize, JsonSchema,
 )]
 #[diesel(table_name = users)]
-#[resource(uuid_kind = UserIdKind, deletable = false)]
+#[resource(uuid_kind = UserKind, deletable = false)]
 pub struct User {
     #[diesel(embed)]
     pub identity: UserIdentity,
@@ -22,7 +22,7 @@ pub struct User {
 impl User {
     /// Create a new user from OIDC claims
     pub fn new(
-        id: UserIdUuid,
+        id: UserUuid,
         external_id: String,
         email: String,
         display_name: Option<String>,

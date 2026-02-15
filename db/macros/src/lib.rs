@@ -2,7 +2,7 @@ use lucid_macros_common::PrimaryKeyType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde_tokenstream::ParseWrapper;
-use syn::{parse_quote, spanned::Spanned, Data, DataStruct, DeriveInput, Error, Fields, Ident};
+use syn::{Data, DataStruct, DeriveInput, Error, Fields, Ident, parse_quote, spanned::Spanned};
 
 #[derive(Debug)]
 pub(crate) struct NameValue {

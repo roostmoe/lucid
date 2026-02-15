@@ -17,6 +17,42 @@ enum BeaconApiImpl {}
 impl BeaconApi for BeaconApiImpl {
     type Context = Ctx;
 
+    async fn list_hosts(
+        rqctx: RequestContext<Self::Context>,
+    ) -> Result<HttpResponseOk<views::HostListResponse>, HttpError> {
+        let apictx = rqctx.context();
+        let opctx = crate::context::op_context_for_external_api(&rqctx).await?;
+
+        // Require authentication
+        opctx.authn.actor_required().map_err(HttpError::from)?;
+
+        let hosts = apictx
+            .beacon
+            .datastore
+            .host_list(false)
+            .await
+            .map_err(|e| HttpError::for_internal_error(format!("db error: {e}")))?;
+
+        Ok(HttpResponseOk(views::HostListResponse {
+            hosts: hosts
+                .iter()
+                .map(|h| views::HostView {
+                    id: h.identity.id.into(),
+                    hostname: "".into(),
+                    created_at: h.identity.created_at,
+                    updated_at: h.identity.updated_at,
+                    deleted_at: None,
+                })
+                .collect(),
+            pagination: views::PaginationMeta {
+                total_items: 0,
+                total_pages: 0,
+                current_page: 0,
+                page_size: 0,
+            },
+        }))
+    }
+
     async fn auth_login(
         rqctx: RequestContext<Self::Context>,
     ) -> Result<HttpResponseSeeOther, HttpError> {

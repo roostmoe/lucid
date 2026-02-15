@@ -14,11 +14,7 @@ impl_typed_uuid_kinds! {
     },
 
     kinds = {
-        BuiltInUser = {},
-        ConsoleSessionId = {},
-        OrganisationId = {},
-        UserId = {},
-        GroupId = {},
-        RoleBindingId = {},
+        User = {},
+        Host = {}
     }
 }

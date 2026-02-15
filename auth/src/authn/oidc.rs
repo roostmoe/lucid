@@ -1,10 +1,10 @@
 // OIDC authentication support
 
 use openidconnect::{
+    AuthenticationFlow, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointMaybeSet,
+    EndpointNotSet, EndpointSet, IssuerUrl, Nonce, RedirectUrl, Scope, TokenResponse,
     core::{CoreClient, CoreProviderMetadata, CoreResponseType},
-    reqwest, AuthenticationFlow, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
-    EndpointMaybeSet, EndpointNotSet, EndpointSet, IssuerUrl, Nonce, RedirectUrl, Scope,
-    TokenResponse,
+    reqwest,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -84,20 +84,20 @@ impl OidcClient {
             ClientId::new(config.client_id.clone()),
             Some(ClientSecret::new(config.client_secret.clone())),
         )
-            .set_redirect_uri(RedirectUrl::new(config.redirect_uri.clone())
-                .map_err(|e| Error::InvalidRedirectUri(e.to_string()))?);
+        .set_redirect_uri(
+            RedirectUrl::new(config.redirect_uri.clone())
+                .map_err(|e| Error::InvalidRedirectUri(e.to_string()))?,
+        );
 
         Ok(Self { client, config })
     }
 
     pub fn authorization_url(&self) -> (String, String, String) {
-        let mut auth_request = self
-            .client
-            .authorize_url(
-                AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
-                CsrfToken::new_random,
-                Nonce::new_random,
-            );
+        let mut auth_request = self.client.authorize_url(
+            AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
+            CsrfToken::new_random,
+            Nonce::new_random,
+        );
 
         // Add configured scopes
         for scope in &self.config.scopes {
@@ -137,7 +137,10 @@ impl OidcClient {
             .ok_or_else(|| Error::MissingClaim("id_token".to_string()))?;
 
         let claims = id_token
-            .claims(&self.client.id_token_verifier(), &Nonce::new(nonce.to_string()))
+            .claims(
+                &self.client.id_token_verifier(),
+                &Nonce::new(nonce.to_string()),
+            )
             .map_err(|e| Error::TokenVerificationFailed(format!("{}", e)))?;
 
         // Extract user info from claims
@@ -148,10 +151,9 @@ impl OidcClient {
             .map(|e| e.as_str().to_string())
             .ok_or_else(|| Error::MissingClaim("email".to_string()))?;
 
-        let display_name = claims.name().and_then(|n| {
-            n.get(None)
-                .map(|localized| localized.as_str().to_string())
-        });
+        let display_name = claims
+            .name()
+            .and_then(|n| n.get(None).map(|localized| localized.as_str().to_string()));
 
         Ok(OidcUserInfo {
             external_id,
@@ -200,7 +202,11 @@ mod test {
             client_id: "test-client".to_string(),
             client_secret: "test-secret".to_string(),
             redirect_uri: "http://localhost:8080/callback".to_string(),
-            scopes: vec!["openid".to_string(), "email".to_string(), "profile".to_string()],
+            scopes: vec![
+                "openid".to_string(),
+                "email".to_string(),
+                "profile".to_string(),
+            ],
             allowed_domains: vec![],
             allowed_emails: vec![],
             owner_email: None,
