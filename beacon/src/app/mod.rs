@@ -25,7 +25,7 @@ impl Beacon {
             secret: config.auth.jwt.secret.clone(),
             issuer: config.auth.jwt.issuer.clone(),
             audience: config.auth.jwt.audience.clone(),
-            expiry_hours: config.auth.jwt.expiry_hours,
+            expiry_seconds: config.auth.jwt.expiry_seconds,
         };
         let jwt = Arc::new(JwtManager::new(jwt_config));
 

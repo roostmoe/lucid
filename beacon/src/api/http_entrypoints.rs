@@ -93,10 +93,14 @@ impl BeaconApi for BeaconApiImpl {
             .oidc
             .exchange_code(&query.code, &nonce)
             .await
-            .map_err(|e| HttpError::for_internal_error(format!("oidc error: {e}")))?;
+            .map_err(|e| {
+                tracing::error!(?e, "OIDC exchange error");
+                HttpError::for_internal_error(format!("oidc error: {e}"))
+            })?;
 
         // Validate email is allowed
         if !apictx.beacon.oidc.is_email_allowed(&user_info.email) {
+            tracing::warn!("Email not allowed: {}", &user_info.email);
             return Err(HttpError::for_client_error(
                 None,
                 ClientErrorStatusCode::FORBIDDEN,
@@ -126,7 +130,7 @@ impl BeaconApi for BeaconApiImpl {
         Ok(HttpResponseOk(views::TokenResponse {
             access_token: token,
             token_type: "Bearer".to_string(),
-            expires_in: 86400, // 24 hours
+            expires_in: apictx.beacon.config.auth.jwt.expiry_seconds,
         }))
     }
 }

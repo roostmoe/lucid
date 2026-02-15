@@ -8,7 +8,7 @@ pub struct JwtConfig {
     pub secret: String,
     pub issuer: String,
     pub audience: String,
-    pub expiry_hours: i64,
+    pub expiry_seconds: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,7 +55,7 @@ impl JwtManager {
 
     pub fn create_token(&self, user_id: UserUuid, email: &str) -> Result<String, Error> {
         let now = Utc::now();
-        let exp = now + Duration::hours(self.config.expiry_hours);
+        let exp = now + Duration::hours(self.config.expiry_seconds);
 
         let claims = Claims {
             sub: user_id.to_string(),
@@ -92,7 +92,7 @@ mod test {
             secret: "test-secret-key-min-32-chars-long!".to_string(),
             issuer: "lucid-test".to_string(),
             audience: "lucid-api".to_string(),
-            expiry_hours: 24,
+            expiry_seconds: 24,
         }
     }
 
@@ -167,7 +167,7 @@ mod test {
     #[test]
     fn test_validate_token_expired() {
         let mut config = test_config();
-        config.expiry_hours = -1; // Expired 1 hour ago
+        config.expiry_seconds = -1; // Expired 1 hour ago
         let manager = JwtManager::new(config);
         let user_id = test_user_id();
         let email = "test@example.com";

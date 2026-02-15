@@ -173,7 +173,7 @@ pub struct JwtConfig {
     /// JWT audience claim
     pub audience: String,
     /// Token expiry in hours
-    pub expiry_hours: i64,
+    pub expiry_seconds: i64,
 }
 
 impl Default for JwtConfig {
@@ -182,7 +182,7 @@ impl Default for JwtConfig {
             secret: String::new(),
             issuer: "lucid".to_string(),
             audience: "lucid-api".to_string(),
-            expiry_hours: 24,
+            expiry_seconds: 86400,
         }
     }
 }
