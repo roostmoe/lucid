@@ -34,6 +34,13 @@ impl Beacon {
             client_id: config.auth.oidc.client_id.clone(),
             client_secret: config.auth.oidc.client_secret.clone(),
             redirect_uri: config.auth.oidc.redirect_uri.clone(),
+            scopes: config.auth.oidc.scopes.clone().unwrap_or_else(|| {
+                vec![
+                    "openid".to_string(),
+                    "email".to_string(),
+                    "profile".to_string(),
+                ]
+            }),
             allowed_domains: config.auth.oidc.allowed_domains.clone().unwrap_or_default(),
             allowed_emails: config.auth.oidc.allowed_emails.clone().unwrap_or_default(),
             owner_email: None,

@@ -136,6 +136,9 @@ pub struct OidcConfig {
     pub client_secret: String,
     /// Redirect URI for OAuth2 callback
     pub redirect_uri: String,
+    /// OAuth2 scopes to request (defaults to ["openid", "email", "profile"])
+    /// At minimum, "openid" scope is required for OIDC
+    pub scopes: Option<Vec<String>>,
     /// Optional list of allowed email domains (e.g., ["example.com"])
     pub allowed_domains: Option<Vec<String>>,
     /// Optional list of allowed email addresses
@@ -149,6 +152,11 @@ impl Default for OidcConfig {
             client_id: String::new(),
             client_secret: String::new(),
             redirect_uri: "http://localhost:8080/auth/callback".to_string(),
+            scopes: Some(vec![
+                "openid".to_string(),
+                "email".to_string(),
+                "profile".to_string(),
+            ]),
             allowed_domains: None,
             allowed_emails: None,
         }

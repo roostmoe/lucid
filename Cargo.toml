@@ -68,7 +68,7 @@ uuid = { version = "1.17.0", features = ["serde", "v4"] }
 heck = "0.5"
 rand = "0.9.1"
 hex = "0.4.3"
-openidconnect = { version = "4", features = ["reqwest"] }
+openidconnect = { version = "4.0.1", features = ["reqwest"] }
 jsonwebtoken = "9"
 moka = { version = "0.12", features = ["future"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }

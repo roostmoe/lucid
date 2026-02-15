@@ -5,6 +5,7 @@ diesel::table! {
         id -> Uuid,
         email -> Text,
         external_id -> Text,
+        system_admin -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
         display_name -> Nullable<Text>,
