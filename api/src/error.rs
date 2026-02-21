@@ -4,6 +4,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ApiError {
+    #[error("Not found")]
+    NotFound,
+
     #[error(transparent)]
     CallerError(#[from] lucid_common::caller::CallerError),
 
@@ -11,10 +14,15 @@ pub enum ApiError {
     InternalAnyhow(#[from] anyhow::Error)
 }
 
+impl ApiError {
+    pub fn not_found() -> Self { Self::NotFound }
+}
+
 impl Into<ApiErrorResponse> for ApiError {
     fn into(self) -> ApiErrorResponse {
         ApiErrorResponse {
             code: match &self {
+                Self::NotFound => Some("NotFound".into()),
                 Self::InternalAnyhow(_) => Some("InternalError".into()),
                 Self::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => Some("Forbidden".into()),
@@ -24,6 +32,7 @@ impl Into<ApiErrorResponse> for ApiError {
             },
 
             message: match &self {
+                Self::NotFound => "The requested resource was not found.".into(),
                 Self::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => "You do not have permission to perform this action.".into(),
                     CallerError::Unauthorized { .. } => "You are not authenticated to perform this action.".into(),
@@ -46,6 +55,7 @@ impl IntoResponse for ApiError {
         tracing::error!("Error returned by handler: {self}");
 
         let status_code = match &self {
+            Self::NotFound => axum::http::StatusCode::NOT_FOUND,
             Self::CallerError(ce) => match ce {
                 CallerError::Forbidden { .. } => axum::http::StatusCode::FORBIDDEN,
                 CallerError::Unauthorized { .. } => axum::http::StatusCode::UNAUTHORIZED,

@@ -6,7 +6,7 @@ use tracing::{error, info, info_span};
 use utoipa::{ToSchema, openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation}};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::{config::LucidApiConfig, context::ApiContext, handlers};
+use crate::{config::LucidApiConfig, context::ApiContext, error::ApiError, handlers};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
@@ -77,6 +77,7 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::auth::auth_login))
         .routes(routes!(handlers::auth::auth_logout))
         .routes(routes!(handlers::auth::auth_whoami))
+        .fallback(not_found_handler)
         .layer(middleware)
         .with_state(context)
         .split_for_parts();
@@ -93,6 +94,10 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
     });
 
     (r, a)
+}
+
+async fn not_found_handler() -> ApiError {
+    ApiError::not_found()
 }
 
 fn apply_default_errors(item: &mut Option<Operation>) {
