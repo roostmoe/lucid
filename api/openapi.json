@@ -1,0 +1,49 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Lucid API Reference",
+    "contact": {
+      "name": "Roost team",
+      "url": "https://github.com/roostmoe/lucid",
+      "email": "hello@roost.moe"
+    },
+    "license": {
+      "name": "Apache 2.0 License",
+      "url": "https://github.com/roostmoe/lucid/blob/main/LICENSE",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth",
+          "console_sessions"
+        ],
+        "operationId": "auth_login",
+        "responses": {}
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth",
+          "console_sessions"
+        ],
+        "operationId": "auth_logout",
+        "responses": {}
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "auth_whoami",
+        "responses": {}
+      }
+    }
+  },
+  "components": {}
+}

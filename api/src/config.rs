@@ -8,4 +8,7 @@ pub struct LucidApiConfig {
 
     #[clap(long, env = "LUCID_API_PUBLIC_URL", default_value = "http://localhost:4000")]
     pub public_url: String,
+
+    #[clap(long, default_value_t = false)]
+    pub dump_openapi: bool,
 }
