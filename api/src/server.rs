@@ -3,7 +3,7 @@ use lucid_common::views::ApiErrorResponse;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer}, trace::TraceLayer};
 use tracing::{error, info, info_span};
-use utoipa::{ToSchema, openapi::{Contact, Info, License, OpenApi, RefOr, path::Operation}};
+use utoipa::{ToSchema, openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation}};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::{config::LucidApiConfig, context::ApiContext, handlers};
@@ -97,34 +97,19 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
 
 fn apply_default_errors(item: &mut Option<Operation>) {
     if let Some(item) = item {
-        item.responses.responses.insert(
-            "401".into(),
-            RefOr::Ref(
-                utoipa::openapi::Ref::builder()
-                    .summary("Unauthorized")
-                    .ref_location_from_schema_name(ApiErrorResponse::name())
-                    .build()
-            )
-        );
-
-        item.responses.responses.insert(
-            "403".into(),
-            RefOr::Ref(
-                utoipa::openapi::Ref::builder()
-                    .summary("Forbidden")
-                    .ref_location_from_schema_name(ApiErrorResponse::name())
-                    .build()
-            )
-        );
-
-        item.responses.responses.insert(
-            "500".into(),
-            RefOr::Ref(
-                utoipa::openapi::Ref::builder()
-                    .summary("Internal server error")
-                    .ref_location_from_schema_name(ApiErrorResponse::name())
-                    .build()
-            )
-        );
+        item.responses.responses.insert("400".into(), error_resp("Client or validation error"));
+        item.responses.responses.insert("401".into(), error_resp("Unauthorized"));
+        item.responses.responses.insert("403".into(), error_resp("Forbidden"));
+        item.responses.responses.insert("404".into(), error_resp("Not found"));
+        item.responses.responses.insert("500".into(), error_resp("Internal server error"));
     }
+}
+
+fn error_resp(summary: &str) -> RefOr<Response> {
+    RefOr::Ref(
+        utoipa::openapi::Ref::builder()
+            .summary(summary)
+            .ref_location_from_schema_name(ApiErrorResponse::name())
+            .build()
+    )
 }
