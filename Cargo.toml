@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+members = ["agent","api", "common"]
 
 [workspace.package]
 edition = "2024"
