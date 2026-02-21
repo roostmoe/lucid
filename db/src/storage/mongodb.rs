@@ -8,6 +8,7 @@ use mongodb::{
     bson::doc,
     options::{ClientOptions, FindOptions},
 };
+use tracing::instrument;
 
 use crate::{
     models::DbUser,
@@ -43,6 +44,7 @@ impl MongoDBStorage {
 
 #[async_trait]
 impl Storage for MongoDBStorage {
+    #[instrument(level = "debug", skip(self), err(Debug))]
     async fn ping(&self) -> Result<(), StoreError> {
         self.0
             .database("admin")
@@ -57,6 +59,7 @@ pub const MONGODB_COLLECTION_USERS: &str = "users";
 
 #[async_trait]
 impl UserStore for MongoDBStorage {
+    #[instrument(skip(self), err(Debug))]
     async fn get(&self, id: String) -> Result<Option<DbUser>, StoreError> {
         let users = UserStore::list(
             self,
@@ -71,6 +74,7 @@ impl UserStore for MongoDBStorage {
         Ok(users.get(0).cloned())
     }
 
+    #[instrument(skip(self), err(Debug))]
     async fn list(
         &self,
         filter: UserFilter,

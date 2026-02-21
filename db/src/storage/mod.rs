@@ -22,6 +22,7 @@ pub trait Storage: UserStore + Send + Sync + 'static {
     async fn ping(&self) -> Result<(), StoreError>;
 }
 
+#[derive(Debug, Default)]
 pub struct UserFilter {
     pub id: Option<Vec<String>>,
     pub email: Option<Vec<String>>,

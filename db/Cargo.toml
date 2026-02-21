@@ -6,11 +6,12 @@ license.workspace = true
 
 [dependencies]
 async-trait.workspace = true
-mongodb.workspace = true
 chrono.workspace = true
-serde.workspace = true
-ulid.workspace = true
-thiserror.workspace = true
 futures.workspace = true
+mongodb.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+ulid.workspace = true
 
 lucid-common.workspace = true
