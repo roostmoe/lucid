@@ -1,6 +1,4 @@
-use std::{fmt::Display, sync::Arc};
-
-use async_trait::async_trait;
+use std::sync::Arc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -38,15 +36,14 @@ pub enum CallerKind {
     MockCaller,
 }
 
-#[async_trait]
-pub trait ApiCaller: Send + Sync + Display + 'static {
+pub trait ApiCaller {
     fn kind(&self) -> CallerKind;
-    async fn id(&self) -> anyhow::Result<String>;
-    async fn permissions(&self) -> anyhow::Result<Vec<String>>;
+    fn id(&self) -> anyhow::Result<String>;
+    fn permissions(&self) -> anyhow::Result<Vec<String>>;
 }
 
 pub enum Caller {
-    Authenticated(Arc<Box<dyn ApiCaller>>),
+    Authenticated(Arc<dyn ApiCaller>),
     Unauthenticated,
 }
 
@@ -57,7 +54,7 @@ impl Caller {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn api_caller(&self) -> Result<Arc<Box<dyn ApiCaller>>, CallerError> {
+    pub fn api_caller(&self) -> Result<Arc<dyn ApiCaller>, CallerError> {
         match self {
             Caller::Authenticated(api_caller) => Ok(api_caller.clone()),
             Caller::Unauthenticated => Err(CallerError::unauthorized(Some(
@@ -74,10 +71,9 @@ impl Caller {
     #[tracing::instrument(skip(self))]
     pub async fn can(&self, permission: &str) -> Result<bool, CallerError> {
         match self {
-            Caller::Authenticated(api_caller) => Ok(api_caller
-                .permissions()
-                .await?
-                .contains(&permission.to_string())),
+            Caller::Authenticated(api_caller) => {
+                Ok(api_caller.permissions()?.contains(&permission.to_string()))
+            }
             Caller::Unauthenticated => Ok(false),
         }
     }
@@ -94,6 +90,8 @@ impl Caller {
 
 #[cfg(test)]
 mod test {
+    use std::fmt::Display;
+
     use super::*;
 
     struct MockApiCaller {
@@ -105,17 +103,16 @@ mod test {
             write!(f, "MockApiCaller({})", self.id)
         }
     }
-    #[async_trait]
     impl ApiCaller for MockApiCaller {
         fn kind(&self) -> CallerKind {
             CallerKind::MockCaller
         }
 
-        async fn id(&self) -> anyhow::Result<String> {
+        fn id(&self) -> anyhow::Result<String> {
             Ok(self.id.clone())
         }
 
-        async fn permissions(&self) -> anyhow::Result<Vec<String>> {
+        fn permissions(&self) -> anyhow::Result<Vec<String>> {
             Ok(self.permissions.clone())
         }
     }
@@ -139,7 +136,7 @@ mod test {
             permissions: vec!["read".to_string(), "write".to_string()],
         };
 
-        let caller = Caller::Authenticated(Arc::new(Box::new(mock_caller)));
+        let caller = Caller::Authenticated(Arc::new(mock_caller));
         assert_eq!(caller.is_authenticated(), true);
     }
 
@@ -150,7 +147,7 @@ mod test {
             permissions: vec!["read".to_string(), "write".to_string()],
         };
 
-        let caller = Caller::Authenticated(Arc::new(Box::new(mock_caller)));
+        let caller = Caller::Authenticated(Arc::new(mock_caller));
         assert_eq!(caller.is_anonymous(), false);
     }
 
@@ -161,7 +158,7 @@ mod test {
             permissions: vec!["read".to_string(), "write".to_string()],
         };
 
-        let caller = Caller::Authenticated(Arc::new(Box::new(mock_caller)));
+        let caller = Caller::Authenticated(Arc::new(mock_caller));
 
         let can_read = caller.can("read").await.unwrap();
         assert_eq!(can_read, true);
@@ -177,7 +174,7 @@ mod test {
             permissions: vec!["write".to_string()],
         };
 
-        let caller = Caller::Authenticated(Arc::new(Box::new(mock_caller)));
+        let caller = Caller::Authenticated(Arc::new(mock_caller));
 
         let can_read = caller.require("read").await;
         assert!(can_read.is_err());
@@ -190,7 +187,7 @@ mod test {
             permissions: vec!["write".to_string()],
         };
 
-        let caller = Caller::Authenticated(Arc::new(Box::new(mock_caller)));
+        let caller = Caller::Authenticated(Arc::new(mock_caller));
 
         let can_read = caller.require("write").await;
         assert!(!can_read.is_err());

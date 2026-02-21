@@ -1,10 +1,13 @@
-use axum::Json;
+use axum::{Json, extract::State};
 use lucid_common::{
+    caller::CallerError,
     params::AuthLoginParams,
     views::{AuthLoginResponse, User},
 };
+use lucid_db::storage::UserStore;
+use tracing::info;
 
-use crate::error::ApiError;
+use crate::{context::ApiContext, error::ApiError};
 
 #[utoipa::path(
     post,
@@ -14,8 +17,14 @@ use crate::error::ApiError;
     responses((status = 201, description = "Successful login", body = AuthLoginResponse))
 )]
 pub async fn auth_login(
-    Json(_body): Json<AuthLoginParams>,
+    State(ctx): State<ApiContext>,
+    Json(body): Json<AuthLoginParams>,
 ) -> Result<Json<AuthLoginResponse>, ApiError> {
+    let caller = UserStore::auth_local(&*ctx.db, body.username, body.password).await?;
+    if caller.is_anonymous() {
+        return Err(ApiError::CallerError(CallerError::unauthorized(None)));
+    }
+    info!("Logged in user {}", caller.api_caller()?.id()?);
     Ok(Json(AuthLoginResponse::Session))
 }
 

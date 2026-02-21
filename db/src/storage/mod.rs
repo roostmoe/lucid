@@ -1,7 +1,10 @@
 use std::fmt::Debug;
 
 use async_trait::async_trait;
-use lucid_common::params::{CreateLocalUserParams, PaginationParams};
+use lucid_common::{
+    caller::Caller,
+    params::{CreateLocalUserParams, PaginationParams},
+};
 use thiserror::Error;
 
 use crate::models::DbUser;
@@ -10,6 +13,9 @@ pub mod mongodb;
 
 #[derive(Debug, Error)]
 pub enum StoreError {
+    #[error("Resource not found")]
+    NotFound,
+
     #[error("Query Error: {0}")]
     MongoDB(#[from] ::mongodb::error::Error),
 
@@ -41,4 +47,5 @@ pub trait UserStore {
     ) -> Result<Vec<DbUser>, StoreError>;
 
     async fn create_local(&self, user: CreateLocalUserParams) -> Result<DbUser, StoreError>;
+    async fn auth_local(&self, email: String, password: String) -> Result<Caller, StoreError>;
 }

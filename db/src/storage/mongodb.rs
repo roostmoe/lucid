@@ -2,12 +2,15 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use argon2::{
-    Argon2,
+    Argon2, PasswordHash, PasswordVerifier,
     password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 use async_trait::async_trait;
 use futures::TryStreamExt;
-use lucid_common::params::{CreateLocalUserParams, PaginationParams};
+use lucid_common::{
+    caller::Caller,
+    params::{CreateLocalUserParams, PaginationParams},
+};
 use mongodb::{
     Client, Database, IndexModel,
     bson::doc,
@@ -143,6 +146,32 @@ impl UserStore for MongoDBStorage {
             ..new_user
         })
     }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn auth_local(&self, email: String, password: String) -> Result<Caller, StoreError> {
+        let users = UserStore::list(
+            self,
+            UserFilter {
+                id: None,
+                email: Some(vec![email]),
+            },
+            PaginationParams { limit: 1, page: 0 },
+        )
+        .await?;
+
+        let user = users.first().ok_or_else(|| StoreError::NotFound)?;
+
+        if user.password_hash.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        let pw_hash = user.password_hash.clone().unwrap();
+        let matches = verify_password(password, pw_hash.clone()).map_err(|e| anyhow!(e))?;
+        if matches {
+            Ok(user.to_caller())
+        } else {
+            Ok(Caller::Unauthenticated)
+        }
+    }
 }
 
 fn hash_password(password: String) -> Result<String, String> {
@@ -154,4 +183,16 @@ fn hash_password(password: String) -> Result<String, String> {
         .to_string();
 
     Ok(password_hash)
+}
+
+fn verify_password(password: String, hash: String) -> Result<bool, String> {
+    let argon2 = Argon2::default();
+    let pw_hash = PasswordHash::new(&hash).map_err(|e| e.to_string())?;
+    let password_hash = argon2.verify_password(password.as_bytes(), &pw_hash);
+
+    if password_hash.is_err() {
+        return Ok(false);
+    }
+
+    Ok(true)
 }
