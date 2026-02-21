@@ -10,6 +10,12 @@ day maintenance tasks of systems administrators.
 Lucid provides inventory tracking, vulnerability alerting, compliance scanning
 and more.
 
+== Features
+
+- [ ] Inventory host tracking
+- [ ] Continuous compliance scanning
+- [ ] Package vulnerability alerting
+
 == Help & Documentation
 
 * https://roostmoe.github.io/lucid[Documentation] (Coming soon)

@@ -50,6 +50,15 @@ If you would like to contribute to Lucid, but are not exactly sure what to work
 on, you can find a number of open issues that are awaiting contributions in
 https://github.com/roostmoe/lucid/issues[Issues].
 
+=== Updating the API documentation
+
+When updating the API, ensure you have updated the OpenAPI specification.
+
+[source,bash]
+----
+$ cargo run -p lucid-api -- --dump-openapi > api/openapi.json
+----
+
 == Reporting Vulnerabilities
 
 If you have found a security vulnerability in Lucid, please follow the
