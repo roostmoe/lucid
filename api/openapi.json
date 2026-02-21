@@ -108,7 +108,105 @@
         "operationId": "auth_whoami",
         "responses": {
           "200": {
-            "description": "User information"
+            "description": "User information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/v1/hosts": {
+      "get": {
+        "tags": [
+          "hosts"
+        ],
+        "operationId": "list_hosts",
+        "responses": {
+          "200": {
+            "description": "List of hosts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedList_Host"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/v1/hosts/{id}": {
+      "get": {
+        "tags": [
+          "hosts"
+        ],
+        "operationId": "get_host",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "ulid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Host"
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/schemas/ApiErrorResponse",
@@ -203,6 +301,185 @@
           }
         ],
         "description": "Response for the login endpoint."
+      },
+      "Host": {
+        "type": "object",
+        "required": [
+          "id",
+          "hostname",
+          "ifaces",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hostname": {
+            "type": "string",
+            "description": "Hostname of the machine. This is a human-readable identifier for the\nhost, and is not guaranteed to be unique."
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "The unique identifier for this host."
+          },
+          "ifaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetworkInterface"
+            },
+            "description": "Network interfaces associated with this host. This is a one-to-many\nrelationship, as a host can have multiple network interfaces."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NetworkInterface": {
+        "type": "object",
+        "required": [
+          "id",
+          "iface",
+          "state",
+          "ip_addrs"
+        ],
+        "properties": {
+          "host_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "ulid",
+            "description": "The unique identifier for the host that this network interface is\nassociated with."
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "The unique identifier for this network interface."
+          },
+          "iface": {
+            "type": "string",
+            "description": "The name of the network interface."
+          },
+          "ip_addrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The IP addresses associated with this network interface."
+          },
+          "state": {
+            "$ref": "#/components/schemas/NetworkInterfaceState",
+            "description": "The state of the network interface. This can be \"up\", \"down\", or\n\"unknown\"."
+          }
+        }
+      },
+      "NetworkInterfaceState": {
+        "type": "string",
+        "enum": [
+          "Up",
+          "Down",
+          "Unknown"
+        ]
+      },
+      "PaginatedList_Host": {
+        "type": "object",
+        "description": "Parameters for paginating through a list of records. This is used by the\nvarious list endpoints to allow clients to paginate through large sets of\nrecords.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "hostname",
+                "ifaces",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "hostname": {
+                  "type": "string",
+                  "description": "Hostname of the machine. This is a human-readable identifier for the\nhost, and is not guaranteed to be unique."
+                },
+                "id": {
+                  "type": "string",
+                  "format": "ulid",
+                  "description": "The unique identifier for this host."
+                },
+                "ifaces": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NetworkInterface"
+                  },
+                  "description": "Network interfaces associated with this host. This is a one-to-many\nrelationship, as a host can have multiple network interfaces."
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The maximum number of results to return.",
+            "minimum": 0
+          },
+          "next_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The next page token, if any. This is acquired by requesting a paginated\nset of records and looking at the `next_token` or `prev_token` field."
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "email",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "The user's display name."
+          },
+          "email": {
+            "type": "string",
+            "description": "The user's email address."
+          },
+          "id": {
+            "type": "string",
+            "description": "The unique identifier for this user."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     }
   }
