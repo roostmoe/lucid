@@ -11,9 +11,7 @@ pub struct ApiContext {
 }
 
 impl ApiContext {
-    pub async fn new(
-        config: LucidApiConfig,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(config: LucidApiConfig) -> anyhow::Result<Self> {
         let db = Arc::new(MongoDBStorage::new(&config.mongodb_uri).await?);
 
         Ok(Self {

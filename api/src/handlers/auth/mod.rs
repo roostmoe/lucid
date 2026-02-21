@@ -1,10 +1,10 @@
-use axum::{Json, extract::State};
+use axum::Json;
 use lucid_common::{
     params::AuthLoginParams,
     views::{AuthLoginResponse, User},
 };
 
-use crate::{context::ApiContext, error::ApiError};
+use crate::error::ApiError;
 
 #[utoipa::path(
     post,
@@ -14,7 +14,6 @@ use crate::{context::ApiContext, error::ApiError};
     responses((status = 201, description = "Successful login", body = AuthLoginResponse))
 )]
 pub async fn auth_login(
-    State(ctx): State<ApiContext>,
     Json(_body): Json<AuthLoginParams>,
 ) -> Result<Json<AuthLoginResponse>, ApiError> {
     Ok(Json(AuthLoginResponse::Session))

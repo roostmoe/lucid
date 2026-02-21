@@ -1,6 +1,8 @@
 [env]
 _.path = ["{{config_root}}/node_modules/.bin"]
 
+LUCID_API_DB_URL = "mongo://mongodb:mongodb@127.0.0.1:27017/lucid"
+
 [tools]
 bun = "1.3.6"
 rust = "1.93.0"

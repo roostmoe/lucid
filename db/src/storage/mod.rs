@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
+use async_trait::async_trait;
 use lucid_common::params::PaginationParams;
 use thiserror::Error;
-use async_trait::async_trait;
 
 use crate::models::DbUser;
 
@@ -17,20 +17,10 @@ pub enum StoreError {
     Internal(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub trait Storage:
-    UserStore
-    + Send
-    + Sync
-    + 'static
-{}
-
-impl<T> Storage for T
-where
-    T: UserStore
-        + Send
-        + Sync
-        + 'static
-{}
+#[async_trait]
+pub trait Storage: UserStore + Send + Sync + 'static {
+    async fn ping(&self) -> Result<(), StoreError>;
+}
 
 pub struct UserFilter {
     pub id: Option<Vec<String>>,
@@ -38,8 +28,11 @@ pub struct UserFilter {
 }
 
 #[async_trait]
-pub trait UserStore
-{
+pub trait UserStore {
     async fn get(&self, id: String) -> Result<Option<DbUser>, StoreError>;
-    async fn list(&self, filter: UserFilter, pagination: PaginationParams) -> Result<Vec<DbUser>, StoreError>;
+    async fn list(
+        &self,
+        filter: UserFilter,
+        pagination: PaginationParams,
+    ) -> Result<Vec<DbUser>, StoreError>;
 }

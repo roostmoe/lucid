@@ -26,7 +26,10 @@ impl DbUser {
 impl From<DbUser> for User {
     fn from(value: DbUser) -> Self {
         Self {
-            id: value.id.map(|oid| oid.to_string()).unwrap_or_else(|| "unknown".into()),
+            id: value
+                .id
+                .map(|oid| oid.to_string())
+                .unwrap_or_else(|| "unknown".into()),
             display_name: value.display_name.clone(),
             email: value.email.clone(),
             created_at: value.created_at(),

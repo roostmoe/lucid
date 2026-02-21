@@ -1,24 +1,55 @@
-use futures::TryStreamExt;
-use async_trait::async_trait;
-use lucid_common::params::PaginationParams;
-use mongodb::{Client, Database, bson::doc, options::FindOptions};
+use std::time::Duration;
 
-use crate::{models::DbUser, storage::{StoreError, UserFilter, UserStore}};
+use async_trait::async_trait;
+use futures::TryStreamExt;
+use lucid_common::params::PaginationParams;
+use mongodb::{
+    Client, Database,
+    bson::doc,
+    options::{ClientOptions, FindOptions},
+};
+
+use crate::{
+    models::DbUser,
+    storage::{Storage, StoreError, UserFilter, UserStore},
+};
 
 #[derive(Debug)]
 pub struct MongoDBStorage(Client);
 
 impl MongoDBStorage {
     pub async fn new(uri: &str) -> Result<Self, mongodb::error::Error> {
-        let client = Client::with_uri_str(uri).await?;
+        let mut client_opts = ClientOptions::parse(uri).await?;
+        if client_opts.app_name.is_none() {
+            client_opts.app_name = Some("Lucid".to_string());
+        }
+        if client_opts.connect_timeout.is_none() {
+            client_opts.connect_timeout = Some(Duration::from_secs(3));
+        }
+        if client_opts.server_selection_timeout.is_none() {
+            client_opts.server_selection_timeout = Some(Duration::from_secs(3));
+        }
+
+        let client = Client::with_options(client_opts)?;
         Ok(Self(client))
     }
 
     fn get_db(&self) -> Database {
-        self
-            .0
+        self.0
             .default_database()
             .unwrap_or_else(|| self.0.database("lucid"))
+    }
+}
+
+#[async_trait]
+impl Storage for MongoDBStorage {
+    async fn ping(&self) -> Result<(), StoreError> {
+        self.0
+            .database("admin")
+            .run_command(doc! {"ping": 1})
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -34,7 +65,8 @@ impl UserStore for MongoDBStorage {
                 email: None,
             },
             PaginationParams { limit: 1, page: 0 },
-        ).await?;
+        )
+        .await?;
 
         Ok(users.iter().nth(0).cloned())
     }
@@ -44,12 +76,9 @@ impl UserStore for MongoDBStorage {
         filter: UserFilter,
         pagination: PaginationParams,
     ) -> Result<Vec<DbUser>, StoreError> {
-        let collection = self
-            .get_db()
-            .collection::<DbUser>(MONGODB_COLLECTION_USERS);
+        let collection = self.get_db().collection::<DbUser>(MONGODB_COLLECTION_USERS);
 
-        let find_options = FindOptions::builder()
-            .limit(pagination.limit);
+        let find_options = FindOptions::builder().limit(pagination.limit);
 
         let mut filter_doc = doc! {};
         if let Some(ids) = filter.id {

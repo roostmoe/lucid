@@ -2,6 +2,7 @@ use axum::{
     Router,
     extract::MatchedPath,
     http::{HeaderName, HeaderValue, Request},
+    routing::get,
 };
 use lucid_common::views::ApiErrorResponse;
 use tower::ServiceBuilder;
@@ -91,6 +92,7 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::auth::auth_whoami))
         .routes(routes!(handlers::hosts::list_hosts))
         .routes(routes!(handlers::hosts::get_host))
+        .route("/healthz", get(handlers::health_check))
         .fallback(not_found_handler)
         .layer(middleware)
         .with_state(context)
