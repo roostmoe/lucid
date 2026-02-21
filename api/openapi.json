@@ -22,7 +22,48 @@
           "console_sessions"
         ],
         "operationId": "auth_login",
-        "responses": {}
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthLoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
       }
     },
     "/v1/auth/logout": {
@@ -32,7 +73,31 @@
           "console_sessions"
         ],
         "operationId": "auth_logout",
-        "responses": {}
+        "responses": {
+          "200": {
+            "description": "Successful logout"
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
       }
     },
     "/v1/auth/me": {
@@ -41,9 +106,104 @@
           "auth"
         ],
         "operationId": "auth_whoami",
-        "responses": {}
+        "responses": {
+          "200": {
+            "description": "User information"
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
       }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "AuthLoginParams": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "The password of the user to authenticate as."
+          },
+          "username": {
+            "type": "string",
+            "description": "The username or email of the user to authenticate as."
+          }
+        }
+      },
+      "AuthLoginResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "The session cookie for the authenticated user. This cookie should be\nincluded in subsequent requests to authenticate the user.",
+            "required": [
+              "token_type"
+            ],
+            "properties": {
+              "token_type": {
+                "type": "string",
+                "enum": [
+                  "Session"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The access token for the authenticated user. This token should be\nincluded in the `Authorization` header of subsequent requests to\nauthenticate the user.",
+            "required": [
+              "access_token",
+              "refresh_token",
+              "expires_in",
+              "token_type"
+            ],
+            "properties": {
+              "access_token": {
+                "type": "string",
+                "description": "The access token for the authenticated user."
+              },
+              "expires_in": {
+                "type": "integer",
+                "format": "int64",
+                "description": "How long the token is valid for, in seconds. After this time has\nelapsed, the user will need to use the refresh token to obtain a\nnew access token."
+              },
+              "refresh_token": {
+                "type": "string",
+                "description": "The refresh token for the user's new session."
+              },
+              "token_type": {
+                "type": "string",
+                "enum": [
+                  "Bearer"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Response for the login endpoint."
+      }
+    }
+  }
 }
