@@ -1,6 +1,5 @@
 use clap::Parser;
 use lucid_api::{config::LucidApiConfig, server};
-use lucid_common::caller::Caller;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{EnvFilter};
