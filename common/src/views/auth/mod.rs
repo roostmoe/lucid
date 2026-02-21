@@ -23,5 +23,5 @@ pub enum AuthLoginResponse {
         /// elapsed, the user will need to use the refresh token to obtain a
         /// new access token.
         expires_in: i64,
-    }
+    },
 }

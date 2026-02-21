@@ -11,11 +11,13 @@ pub enum ApiError {
     CallerError(#[from] lucid_common::caller::CallerError),
 
     #[error(transparent)]
-    InternalAnyhow(#[from] anyhow::Error)
+    InternalAnyhow(#[from] anyhow::Error),
 }
 
 impl ApiError {
-    pub fn not_found() -> Self { Self::NotFound }
+    pub fn not_found() -> Self {
+        Self::NotFound
+    }
 }
 
 impl Into<ApiErrorResponse> for ApiError {
@@ -28,17 +30,25 @@ impl Into<ApiErrorResponse> for ApiError {
                     CallerError::Forbidden { .. } => Some("Forbidden".into()),
                     CallerError::Unauthorized { .. } => Some("Unauthorized".into()),
                     CallerError::Anyhow(_) => Some("InternalError".into()),
-                }
+                },
             },
 
             message: match &self {
                 Self::NotFound => "The requested resource was not found.".into(),
                 Self::CallerError(ce) => match ce {
-                    CallerError::Forbidden { .. } => "You do not have permission to perform this action.".into(),
-                    CallerError::Unauthorized { .. } => "You are not authenticated to perform this action.".into(),
-                    CallerError::Anyhow(_) => "Something went wrong on our end. Please try again later.".into(),
+                    CallerError::Forbidden { .. } => {
+                        "You do not have permission to perform this action.".into()
+                    }
+                    CallerError::Unauthorized { .. } => {
+                        "You are not authenticated to perform this action.".into()
+                    }
+                    CallerError::Anyhow(_) => {
+                        "Something went wrong on our end. Please try again later.".into()
+                    }
+                },
+                Self::InternalAnyhow(_) => {
+                    "Something went wrong on our end. Please try again later.".into()
                 }
-                Self::InternalAnyhow(_) => "Something went wrong on our end. Please try again later.".into(),
             },
 
             #[cfg(debug_assertions)]
@@ -60,7 +70,7 @@ impl IntoResponse for ApiError {
                 CallerError::Forbidden { .. } => axum::http::StatusCode::FORBIDDEN,
                 CallerError::Unauthorized { .. } => axum::http::StatusCode::UNAUTHORIZED,
                 CallerError::Anyhow(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            }
+            },
             Self::InternalAnyhow(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
         };
 

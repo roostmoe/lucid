@@ -6,14 +6,10 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum CallerError {
     #[error("Unauthorized: {reason}")]
-    Unauthorized {
-        reason: String,
-    },
+    Unauthorized { reason: String },
 
     #[error("User missing permission: {permission}")]
-    Forbidden {
-        permission: String,
-    },
+    Forbidden { permission: String },
 
     #[error("An unspecified error occurred: {0}")]
     Anyhow(#[from] anyhow::Error),
@@ -43,9 +39,7 @@ pub enum CallerKind {
 }
 
 #[async_trait]
-pub trait ApiCaller:
-    Send + Sync + Display + 'static
-{
+pub trait ApiCaller: Send + Sync + Display + 'static {
     fn kind(&self) -> CallerKind;
     async fn id(&self) -> anyhow::Result<String>;
     async fn permissions(&self) -> anyhow::Result<Vec<String>>;
@@ -66,9 +60,9 @@ impl Caller {
     pub fn api_caller(&self) -> Result<Arc<Box<dyn ApiCaller>>, CallerError> {
         match self {
             Caller::Authenticated(api_caller) => Ok(api_caller.clone()),
-            Caller::Unauthenticated => Err(CallerError::unauthorized(
-                Some("Caller is not authenticated".into())
-            )),
+            Caller::Unauthenticated => Err(CallerError::unauthorized(Some(
+                "Caller is not authenticated".into(),
+            ))),
         }
     }
 
@@ -80,7 +74,10 @@ impl Caller {
     #[tracing::instrument(skip(self))]
     pub async fn can(&self, permission: &str) -> Result<bool, CallerError> {
         match self {
-            Caller::Authenticated(api_caller) => Ok(api_caller.permissions().await?.contains(&permission.to_string())),
+            Caller::Authenticated(api_caller) => Ok(api_caller
+                .permissions()
+                .await?
+                .contains(&permission.to_string())),
             Caller::Unauthenticated => Ok(false),
         }
     }

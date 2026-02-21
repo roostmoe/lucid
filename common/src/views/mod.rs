@@ -12,8 +12,7 @@ pub use auth::*;
 /// various list endpoints to allow clients to paginate through large sets of
 /// records.
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
-pub struct PaginatedList<T>
-{
+pub struct PaginatedList<T> {
     pub items: Vec<T>,
 
     /// The next page token, if any. This is acquired by requesting a paginated
