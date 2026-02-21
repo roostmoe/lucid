@@ -1,0 +1,74 @@
+---
+name: API Bug
+description: Report a bug in the Lucid API
+labels: ["component/api"]
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        thanks for reporting an api bug. fill in the details below so we can reproduce and fix it
+
+  - type: input
+    id: api_version
+    attributes:
+      label: API Version
+      description: which version of the api are you using?
+      placeholder: e.g. v1.2.3
+    validations:
+      required: true
+
+  - type: input
+    id: host_os
+    attributes:
+      label: Host OS
+      description: what operating system is the api running on?
+      placeholder: e.g. Ubuntu 22.04, macOS 14.2, Windows 11
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: clear description of what's broken
+      placeholder: when i call /api/endpoint, it returns 500...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: how can we reproduce this?
+      placeholder: |
+        1. call endpoint with params...
+        2. observe response...
+        3. see error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+      description: what should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: paste any relevant logs, stack traces, or error messages
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: anything else we should know?
+    validations:
+      required: false

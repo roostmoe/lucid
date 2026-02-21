@@ -1,0 +1,36 @@
+---
+name: Docs Issue
+description: Report an issue with documentation
+title: "[Docs] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        found something wrong, missing, or confusing in the docs? let us know
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: which page or section?
+      placeholder: e.g. Getting Started guide, API reference for /endpoint
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What's Wrong?
+      description: describe the problem with the docs
+      placeholder: this section is unclear because... / this example doesn't work... / this is missing info about...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: how should it be fixed? (optional but helpful)
+    validations:
+      required: false

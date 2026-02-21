@@ -1,0 +1,83 @@
+---
+name: Agent Bug
+description: Report a bug in the Lucid host agent
+labels: ["component/agent"]
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        thanks for reporting an agent bug. more details = faster fix
+
+  - type: input
+    id: host_os
+    attributes:
+      label: Host OS
+      description: what operating system?
+      placeholder: e.g. Ubuntu, macOS, Windows, Arch
+    validations:
+      required: true
+
+  - type: input
+    id: host_os_version
+    attributes:
+      label: Host OS Version
+      description: which version?
+      placeholder: e.g. 22.04, 14.2, 11 23H2
+    validations:
+      required: true
+
+  - type: input
+    id: host_kernel
+    attributes:
+      label: Host Kernel
+      description: kernel version (run `uname -r` on linux/mac, `ver` on windows)
+      placeholder: e.g. 6.5.0-15-generic, 23.2.0, 10.0.22631
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: what's broken?
+      placeholder: the agent crashes when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: how can we reproduce this?
+      placeholder: |
+        1. start agent with...
+        2. run command...
+        3. agent crashes...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+      description: what should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/Output
+      description: paste relevant logs or terminal output
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: anything else that might help?
+    validations:
+      required: false

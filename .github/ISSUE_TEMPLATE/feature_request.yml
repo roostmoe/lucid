@@ -1,0 +1,56 @@
+---
+name: Feature Request
+description: Propose a new feature (consider starting a discussion first)
+title: "[Feature] "
+labels: ["enhancement"]
+type: feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **note:** for new feature ideas, it's usually better to start a discussion first so we can explore the idea together before opening an issue
+
+        if you've already discussed this, carry on
+
+  - type: input
+    id: discussion_link
+    attributes:
+      label: Discussion Link
+      description: link to the discussion thread (if applicable)
+      placeholder: https://github.com/roostmoe/lucid/discussions/...
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem/Use Case
+      description: what problem does this solve? what's the use case?
+      placeholder: currently, when i try to... i can't because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: how should this work?
+      placeholder: add a feature that allows...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: any other approaches you thought about?
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: mockups, examples, related issues, etc
+    validations:
+      required: false

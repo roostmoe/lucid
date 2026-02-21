@@ -1,0 +1,12 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: Help, Support & Development Chat
+    url: https://matrix.to/#/#lucid:hayden.moe
+    about: for discussing lucid with maintainers and community members
+  - name: Discussions
+    url: https://github.com/roostmoe/lucid/discussions
+    about: for general questions, ideas, or brainstorming new features
+  - name: Security Issues
+    url: https://github.com/roostmoe/lucid/security/advisories
+    about: for reporting security vulnerabilities (do not create public issues)
