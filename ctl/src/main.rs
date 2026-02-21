@@ -7,7 +7,12 @@ pub struct Args {
     #[clap(subcommand)]
     command: Command,
 
-    #[clap(short = 'D', long, env = "LUCID_API_DB_URL", default_value = "mongodb://localhost:27017/lucid")]
+    #[clap(
+        short = 'D',
+        long,
+        env = "LUCID_API_DB_URL",
+        default_value = "mongodb://localhost:27017/lucid"
+    )]
     db_url: String,
 }
 
@@ -35,15 +40,25 @@ async fn main() {
         .expect("Failed to connect to MongoDB");
 
     match args.command {
-        Command::CreateUser { display_name, email, password } => {
-            println!("Creating user with email: {} and password: {}", email, password);
-            let new_user = UserStore::create_local(&stg, CreateLocalUserParams {
-                display_name,
-                email,
-                password,
-            })
-                .await
-                .expect("Failed to create user");
+        Command::CreateUser {
+            display_name,
+            email,
+            password,
+        } => {
+            println!(
+                "Creating user with email: {} and password: {}",
+                email, password
+            );
+            let new_user = UserStore::create_local(
+                &stg,
+                CreateLocalUserParams {
+                    display_name,
+                    email,
+                    password,
+                },
+            )
+            .await
+            .expect("Failed to create user");
 
             println!("Created user with ID {}", new_user.id.unwrap());
         }

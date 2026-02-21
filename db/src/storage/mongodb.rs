@@ -1,12 +1,17 @@
 use std::time::Duration;
 
 use anyhow::anyhow;
-use argon2::{password_hash::{rand_core::OsRng, PasswordHasher, SaltString}, Argon2};
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
+};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use lucid_common::params::{CreateLocalUserParams, PaginationParams};
 use mongodb::{
-    Client, Database, IndexModel, bson::doc, options::{ClientOptions, FindOptions, IndexOptions}
+    Client, Database, IndexModel,
+    bson::doc,
+    options::{ClientOptions, FindOptions, IndexOptions},
 };
 use tracing::instrument;
 
@@ -53,7 +58,7 @@ impl MongoDBStorage {
                 IndexModel::builder()
                     .keys(doc! {"email": 1})
                     .options(IndexOptions::builder().unique(true).build())
-                    .build()
+                    .build(),
             )
             .await?;
 
@@ -143,7 +148,8 @@ impl UserStore for MongoDBStorage {
 fn hash_password(password: String) -> Result<String, String> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
-    let password_hash = argon2.hash_password(password.as_bytes(), &salt)
+    let password_hash = argon2
+        .hash_password(password.as_bytes(), &salt)
         .map_err(|e| e.to_string())?
         .to_string();
 
