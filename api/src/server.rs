@@ -1,8 +1,9 @@
 use axum::{Router, extract::MatchedPath, http::{HeaderName, HeaderValue, Request}};
+use lucid_common::views::ApiErrorResponse;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer}, trace::TraceLayer};
 use tracing::{error, info, info_span};
-use utoipa::openapi::{Contact, Info, License, OpenApi};
+use utoipa::{ToSchema, openapi::{Contact, Info, License, OpenApi, RefOr, path::Operation}};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::{config::LucidApiConfig, context::ApiContext, handlers};
@@ -72,11 +73,58 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         )
         .build();
 
-    OpenApiRouter::with_openapi(openapi)
+    let (r, mut a) = OpenApiRouter::with_openapi(openapi)
         .routes(routes!(handlers::auth::auth_login))
         .routes(routes!(handlers::auth::auth_logout))
         .routes(routes!(handlers::auth::auth_whoami))
         .layer(middleware)
         .with_state(context)
-        .split_for_parts()
+        .split_for_parts();
+
+    a.paths.paths.iter_mut().for_each(|(_path, item)| {
+        apply_default_errors(&mut item.get);
+        apply_default_errors(&mut item.post);
+        apply_default_errors(&mut item.patch);
+        apply_default_errors(&mut item.put);
+        apply_default_errors(&mut item.delete);
+        apply_default_errors(&mut item.trace);
+        apply_default_errors(&mut item.head);
+        apply_default_errors(&mut item.options);
+    });
+
+    (r, a)
+}
+
+fn apply_default_errors(item: &mut Option<Operation>) {
+    if let Some(item) = item {
+        item.responses.responses.insert(
+            "401".into(),
+            RefOr::Ref(
+                utoipa::openapi::Ref::builder()
+                    .summary("Unauthorized")
+                    .ref_location_from_schema_name(ApiErrorResponse::name())
+                    .build()
+            )
+        );
+
+        item.responses.responses.insert(
+            "403".into(),
+            RefOr::Ref(
+                utoipa::openapi::Ref::builder()
+                    .summary("Forbidden")
+                    .ref_location_from_schema_name(ApiErrorResponse::name())
+                    .build()
+            )
+        );
+
+        item.responses.responses.insert(
+            "500".into(),
+            RefOr::Ref(
+                utoipa::openapi::Ref::builder()
+                    .summary("Internal server error")
+                    .ref_location_from_schema_name(ApiErrorResponse::name())
+                    .build()
+            )
+        );
+    }
 }

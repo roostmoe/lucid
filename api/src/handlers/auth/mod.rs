@@ -1,5 +1,5 @@
 use axum::Json;
-use lucid_common::{params::AuthLoginParams, views::{ApiErrorResponse, AuthLoginResponse}};
+use lucid_common::{params::AuthLoginParams, views::AuthLoginResponse};
 use tracing::info;
 
 use crate::error::ApiError;
@@ -9,15 +9,8 @@ use crate::error::ApiError;
     post,
     path = "/v1/auth/login",
     tags = ["auth", "console_sessions"],
-    request_body(
-        content = AuthLoginParams,
-        content_type = "application/json",
-    ),
-    responses(
-        (status = 201, description = "Successful login", body = AuthLoginResponse),
-        (status = 401, description = "Unauthorized", body = ApiErrorResponse),
-        (status = 500, description = "Internal server error", body = ApiErrorResponse),
-    )
+    request_body(content = AuthLoginParams, content_type = "application/json"),
+    responses((status = 201, description = "Successful login", body = AuthLoginResponse))
 )]
 pub async fn auth_login(
     Json(_body): Json<AuthLoginParams>,
@@ -29,7 +22,8 @@ pub async fn auth_login(
 #[utoipa::path(
     post,
     path = "/v1/auth/logout",
-    tags = ["auth", "console_sessions"]
+    tags = ["auth", "console_sessions"],
+    responses((status = 200, description = "Successful logout"))
 )]
 pub async fn auth_logout() -> String {
     "Logout Endpoint".into()
@@ -39,7 +33,8 @@ pub async fn auth_logout() -> String {
 #[utoipa::path(
     get,
     path = "/v1/auth/me",
-    tags = ["auth"]
+    tags = ["auth"],
+    responses((status = 200, description = "User information"))
 )]
 pub async fn auth_whoami() -> String {
     info!("Hello!");
