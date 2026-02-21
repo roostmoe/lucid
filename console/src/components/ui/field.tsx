@@ -1,9 +1,8 @@
-import { useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-
-import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
 	return (
@@ -82,6 +81,7 @@ function Field({
 	...props
 }: React.ComponentProps<"div"> & VariantProps<typeof fieldVariants>) {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: Using div with role=group for flexible styling
 		<div
 			role="group"
 			data-slot="field"
@@ -202,15 +202,14 @@ function FieldError({
 			...new Map(errors.map((error) => [error?.message, error])).values(),
 		];
 
-		if (uniqueErrors?.length == 1) {
+		if (uniqueErrors?.length === 1) {
 			return uniqueErrors[0]?.message;
 		}
 
 		return (
 			<ul className="ml-4 flex list-disc flex-col gap-1">
-				{uniqueErrors.map(
-					(error, index) =>
-						error?.message && <li key={index}>{error.message}</li>,
+				{uniqueErrors.map((error) =>
+					error?.message ? <li key={error.message}>{error.message}</li> : null,
 				)}
 			</ul>
 		);
