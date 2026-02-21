@@ -20,22 +20,22 @@ impl ApiError {
     }
 }
 
-impl Into<ApiErrorResponse> for ApiError {
-    fn into(self) -> ApiErrorResponse {
+impl From<ApiError> for ApiErrorResponse {
+    fn from(err: ApiError) -> Self {
         ApiErrorResponse {
-            code: match &self {
-                Self::NotFound => Some("NotFound".into()),
-                Self::InternalAnyhow(_) => Some("InternalError".into()),
-                Self::CallerError(ce) => match ce {
+            code: match &err {
+                ApiError::NotFound => Some("NotFound".into()),
+                ApiError::InternalAnyhow(_) => Some("InternalError".into()),
+                ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => Some("Forbidden".into()),
                     CallerError::Unauthorized { .. } => Some("Unauthorized".into()),
                     CallerError::Anyhow(_) => Some("InternalError".into()),
                 },
             },
 
-            message: match &self {
-                Self::NotFound => "The requested resource was not found.".into(),
-                Self::CallerError(ce) => match ce {
+            message: match &err {
+                ApiError::NotFound => "The requested resource was not found.".into(),
+                ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => {
                         "You do not have permission to perform this action.".into()
                     }
@@ -46,13 +46,13 @@ impl Into<ApiErrorResponse> for ApiError {
                         "Something went wrong on our end. Please try again later.".into()
                     }
                 },
-                Self::InternalAnyhow(_) => {
+                ApiError::InternalAnyhow(_) => {
                     "Something went wrong on our end. Please try again later.".into()
                 }
             },
 
             #[cfg(debug_assertions)]
-            details: Some(self.to_string()),
+            details: Some(err.to_string()),
 
             #[cfg(not(debug_assertions))]
             details: None,
