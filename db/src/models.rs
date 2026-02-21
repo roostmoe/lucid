@@ -1,6 +1,5 @@
 use std::{fmt::Display, sync::Arc};
 
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lucid_common::{
     caller::{ApiCaller, Caller, CallerKind},
