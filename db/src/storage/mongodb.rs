@@ -68,7 +68,7 @@ impl UserStore for MongoDBStorage {
         )
         .await?;
 
-        Ok(users.iter().nth(0).cloned())
+        Ok(users.get(0).cloned())
     }
 
     async fn list(
