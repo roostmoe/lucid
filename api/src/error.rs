@@ -8,6 +8,9 @@ pub enum ApiError {
     NotFound,
 
     #[error(transparent)]
+    Storage(#[from] lucid_db::storage::StoreError),
+
+    #[error(transparent)]
     CallerError(#[from] lucid_common::caller::CallerError),
 
     #[error(transparent)]
@@ -25,6 +28,7 @@ impl From<ApiError> for ApiErrorResponse {
         ApiErrorResponse {
             code: match &err {
                 ApiError::NotFound => Some("NotFound".into()),
+                ApiError::Storage(_) => Some("InternalError".into()),
                 ApiError::InternalAnyhow(_) => Some("InternalError".into()),
                 ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => Some("Forbidden".into()),
@@ -35,6 +39,9 @@ impl From<ApiError> for ApiErrorResponse {
 
             message: match &err {
                 ApiError::NotFound => "The requested resource was not found.".into(),
+                ApiError::Storage(_) => {
+                    "Something went wrong on our end. Please try again later.".into()
+                }
                 ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => {
                         "You do not have permission to perform this action.".into()
@@ -66,6 +73,7 @@ impl IntoResponse for ApiError {
 
         let status_code = match &self {
             Self::NotFound => axum::http::StatusCode::NOT_FOUND,
+            Self::Storage(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Self::CallerError(ce) => match ce {
                 CallerError::Forbidden { .. } => axum::http::StatusCode::FORBIDDEN,
                 CallerError::Unauthorized { .. } => axum::http::StatusCode::UNAUTHORIZED,

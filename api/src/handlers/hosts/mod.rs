@@ -1,6 +1,12 @@
-use axum::{Json, extract::{Path, Query}};
+use axum::{
+    Json,
+    extract::{Path, Query},
+};
 use chrono::Utc;
-use lucid_common::{params::PaginationParams, views::{Host, PaginatedList}};
+use lucid_common::{
+    params::PaginationParams,
+    views::{Host, PaginatedList},
+};
 use ulid::Ulid;
 
 use crate::error::ApiError;
@@ -27,9 +33,7 @@ pub async fn list_hosts(
     tags = ["hosts"],
     responses((status = 200, description = "Resolved host", body = Host))
 )]
-pub async fn get_host(
-    Path(id): Path<Ulid>,
-) -> Result<Json<Host>, ApiError> {
+pub async fn get_host(Path(id): Path<Ulid>) -> Result<Json<Host>, ApiError> {
     let created_at = chrono::DateTime::<Utc>::from(id.datetime());
 
     Ok(Json(Host {

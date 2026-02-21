@@ -22,7 +22,9 @@ use crate::{config::LucidApiConfig, context::ApiContext, error::ApiError, handle
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
 pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
-    let context = ApiContext::new(cfg.clone());
+    let context = ApiContext::new(cfg.clone())
+        .await
+        .expect("Failed to initialize API context");
 
     let x_request_id = HeaderName::from_static(REQUEST_ID_HEADER);
     let middleware = ServiceBuilder::new()
@@ -87,10 +89,8 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::auth::auth_login))
         .routes(routes!(handlers::auth::auth_logout))
         .routes(routes!(handlers::auth::auth_whoami))
-
         .routes(routes!(handlers::hosts::list_hosts))
         .routes(routes!(handlers::hosts::get_host))
-
         .fallback(not_found_handler)
         .layer(middleware)
         .with_state(context)
