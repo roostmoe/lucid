@@ -95,7 +95,7 @@ impl UserStore for MongoDBStorage {
         )
         .await?;
 
-        Ok(users.get(0).cloned())
+        Ok(users.first().cloned())
     }
 
     #[instrument(skip(self), err(Debug))]

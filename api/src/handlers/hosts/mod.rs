@@ -40,7 +40,7 @@ pub async fn get_host(Path(id): Path<Ulid>) -> Result<Json<Host>, ApiError> {
         id,
         hostname: "example.com".into(),
         ifaces: vec![],
-        created_at: created_at,
+        created_at,
         updated_at: created_at,
     }))
 }
