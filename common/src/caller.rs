@@ -33,10 +33,20 @@ impl CallerError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CallerKind {
+    User,
+    Agent,
+
+    #[cfg(test)]
+    MockCaller,
+}
+
 #[async_trait]
 pub trait ApiCaller:
     Send + Sync + Display + 'static
 {
+    fn kind(&self) -> CallerKind;
     async fn id(&self) -> anyhow::Result<String>;
     async fn permissions(&self) -> anyhow::Result<Vec<String>>;
 }
@@ -47,10 +57,12 @@ pub enum Caller {
 }
 
 impl Caller {
+    #[tracing::instrument(skip(self))]
     pub fn is_authenticated(&self) -> bool {
         matches!(self, Caller::Authenticated(_))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn api_caller(&self) -> Result<Arc<Box<dyn ApiCaller>>, CallerError> {
         match self {
             Caller::Authenticated(api_caller) => Ok(api_caller.clone()),
@@ -60,10 +72,12 @@ impl Caller {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn is_anonymous(&self) -> bool {
         matches!(self, Caller::Unauthenticated)
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn can(&self, permission: &str) -> Result<bool, CallerError> {
         match self {
             Caller::Authenticated(api_caller) => Ok(api_caller.permissions().await?.contains(&permission.to_string())),
@@ -71,6 +85,7 @@ impl Caller {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn require(&self, permission: &str) -> Result<(), CallerError> {
         let can = self.can(permission).await?;
         if !can {
@@ -95,6 +110,10 @@ mod test {
     }
     #[async_trait]
     impl ApiCaller for MockApiCaller {
+        fn kind(&self) -> CallerKind {
+            CallerKind::MockCaller
+        }
+
         async fn id(&self) -> anyhow::Result<String> {
             Ok(self.id.clone())
         }
