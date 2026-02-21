@@ -66,6 +66,12 @@ jobs:
   openapi:
     name: OpenAPI Schema
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongodb/mongodb-community-server:8.0-ubi8
+        ports: [27017:27017]
+    env:
+      LUCID_API_DB_URL: mongodb://localhost:27017/lucid
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6.0.2
 
