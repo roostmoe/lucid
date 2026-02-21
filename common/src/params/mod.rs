@@ -9,6 +9,9 @@ pub use auth::*;
 mod host;
 pub use host::*;
 
+mod user;
+pub use user::*;
+
 /// Parameters for paginating through a list of records. This is used by the
 /// various list endpoints to allow clients to paginate through large sets of
 /// records.

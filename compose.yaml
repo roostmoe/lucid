@@ -4,11 +4,8 @@ volumes:
 
 services:
   mongo:
-    image: mongo:8.0
+    image: mongodb/mongodb-community-server:8.0-ubi8
     restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongodb
-      MONGO_INITDB_ROOT_PASSWORD: mongodb
     ports:
       - 27017:27017
     volumes:

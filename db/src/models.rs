@@ -9,6 +9,7 @@ pub struct DbUser {
     pub id: Option<ObjectId>,
     pub display_name: String,
     pub email: String,
+    pub password_hash: Option<String>,
     pub updated_at: DateTime<Utc>,
 }
 

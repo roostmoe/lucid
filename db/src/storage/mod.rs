@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use async_trait::async_trait;
-use lucid_common::params::PaginationParams;
+use lucid_common::params::{CreateLocalUserParams, PaginationParams};
 use thiserror::Error;
 
 use crate::models::DbUser;
@@ -15,6 +15,9 @@ pub enum StoreError {
 
     #[error(transparent)]
     Internal(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+    #[error(transparent)]
+    InternalAnyhow(#[from] anyhow::Error),
 }
 
 #[async_trait]
@@ -36,4 +39,6 @@ pub trait UserStore {
         filter: UserFilter,
         pagination: PaginationParams,
     ) -> Result<Vec<DbUser>, StoreError>;
+
+    async fn create_local(&self, user: CreateLocalUserParams) -> Result<DbUser, StoreError>;
 }

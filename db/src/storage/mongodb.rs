@@ -1,12 +1,12 @@
 use std::time::Duration;
 
+use anyhow::anyhow;
+use argon2::{password_hash::{rand_core::OsRng, PasswordHasher, SaltString}, Argon2};
 use async_trait::async_trait;
 use futures::TryStreamExt;
-use lucid_common::params::PaginationParams;
+use lucid_common::params::{CreateLocalUserParams, PaginationParams};
 use mongodb::{
-    Client, Database,
-    bson::doc,
-    options::{ClientOptions, FindOptions},
+    Client, Database, IndexModel, bson::doc, options::{ClientOptions, FindOptions, IndexOptions}
 };
 use tracing::instrument;
 
@@ -32,13 +32,32 @@ impl MongoDBStorage {
         }
 
         let client = Client::with_options(client_opts)?;
-        Ok(Self(client))
+
+        let storage = Self(client);
+
+        storage.init().await?;
+
+        Ok(storage)
     }
 
     fn get_db(&self) -> Database {
         self.0
             .default_database()
             .unwrap_or_else(|| self.0.database("lucid"))
+    }
+
+    async fn init(&self) -> Result<(), mongodb::error::Error> {
+        self.get_db()
+            .collection::<()>(MONGODB_COLLECTION_USERS)
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"email": 1})
+                    .options(IndexOptions::builder().unique(true).build())
+                    .build()
+            )
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -100,4 +119,33 @@ impl UserStore for MongoDBStorage {
             .await
             .map_err(StoreError::MongoDB)
     }
+
+    async fn create_local(&self, user: CreateLocalUserParams) -> Result<DbUser, StoreError> {
+        let collection = self.get_db().collection::<DbUser>(MONGODB_COLLECTION_USERS);
+
+        let new_user = DbUser {
+            id: None,
+            display_name: user.display_name,
+            email: user.email,
+            password_hash: Some(hash_password(user.password).map_err(|e| anyhow!(e))?),
+            updated_at: chrono::Utc::now(),
+        };
+
+        let insert_result = collection.insert_one(new_user.clone()).await?;
+
+        Ok(DbUser {
+            id: insert_result.inserted_id.as_object_id(),
+            ..new_user
+        })
+    }
+}
+
+fn hash_password(password: String) -> Result<String, String> {
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2.hash_password(password.as_bytes(), &salt)
+        .map_err(|e| e.to_string())?
+        .to_string();
+
+    Ok(password_hash)
 }

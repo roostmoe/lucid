@@ -1,12 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["agent","api", "common", "db"]
+members = ["agent","api", "common", "ctl", "db"]
 
 [workspace.package]
 edition = "2024"
 license = "Apache-2.0"
 
 [workspace.dependencies]
+argon2 = { version = "0.5.3", features = ["std"] }
 anyhow = "1.0.102"
 async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["macros"] }
