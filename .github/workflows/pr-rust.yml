@@ -1,8 +1,15 @@
-name: PR Validation
+name: PR Validation (Rust)
 
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'agent/**'
+      - 'api/**'
+      - 'common/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/pr-rust.yml'
   merge_group:
 
 concurrency:

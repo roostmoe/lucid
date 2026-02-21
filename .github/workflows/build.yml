@@ -7,6 +7,29 @@ on:
       - 'v*'
 
 jobs:
+  console:
+    name: Build Console
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6.0.2
+
+      - uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2.1.2
+
+      - name: Install dependencies
+        working-directory: console
+        run: bun install --frozen-lockfile
+
+      - name: Build console
+        working-directory: console
+        run: bun run build
+
+      - name: Upload console artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.5.0
+        with:
+          name: lucid-console
+          path: console/dist/
+          if-no-files-found: error
+
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
@@ -66,7 +89,7 @@ jobs:
   release:
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs: [build, console]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -79,10 +102,16 @@ jobs:
       - name: Create archives
         run: |
           for dir in lucid-*; do
-            target="${dir#lucid-}"
-            cd "$dir"
-            tar czf "../${dir}.tar.gz" *
-            cd ..
+            if [ "$dir" = "lucid-console" ]; then
+              cd "$dir"
+              tar czf "../lucid-console.tar.gz" .
+              cd ..
+            else
+              target="${dir#lucid-}"
+              cd "$dir"
+              tar czf "../${dir}.tar.gz" *
+              cd ..
+            fi
           done
 
       - name: Create release
