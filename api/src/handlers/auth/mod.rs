@@ -1,10 +1,8 @@
 use axum::Json;
-use lucid_common::{params::AuthLoginParams, views::AuthLoginResponse};
-use tracing::info;
+use lucid_common::{params::AuthLoginParams, views::{AuthLoginResponse, User}};
 
 use crate::error::ApiError;
 
-#[axum::debug_handler]
 #[utoipa::path(
     post,
     path = "/v1/auth/login",
@@ -18,7 +16,6 @@ pub async fn auth_login(
     Ok(Json(AuthLoginResponse::Session))
 }
 
-#[axum::debug_handler]
 #[utoipa::path(
     post,
     path = "/v1/auth/logout",
@@ -29,14 +26,18 @@ pub async fn auth_logout() -> String {
     "Logout Endpoint".into()
 }
 
-#[axum::debug_handler]
 #[utoipa::path(
     get,
     path = "/v1/auth/me",
     tags = ["auth"],
-    responses((status = 200, description = "User information"))
+    responses((status = 200, description = "User information", body = User))
 )]
-pub async fn auth_whoami() -> String {
-    info!("Hello!");
-    "Whoami Endpoint".into()
+pub async fn auth_whoami() -> Result<Json<User>, ApiError> {
+    Ok(Json(User {
+        id: ulid::Ulid::new(),
+        display_name: "John Doe".into(),
+        email: "example@roost.moe".into(),
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+    }))
 }

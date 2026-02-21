@@ -6,6 +6,9 @@ use utoipa::{IntoParams, ToSchema};
 mod auth;
 pub use auth::*;
 
+mod host;
+pub use host::*;
+
 /// Parameters for paginating through a list of records. This is used by the
 /// various list endpoints to allow clients to paginate through large sets of
 /// records.
