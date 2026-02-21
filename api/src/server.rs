@@ -10,7 +10,7 @@ use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use tracing::{error, info, info_span};
+use tracing::info_span;
 use utoipa::{
     ToSchema,
     openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation},
