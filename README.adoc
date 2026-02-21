@@ -1,0 +1,40 @@
+:showtitle:
+:toc: left
+:icons: font
+
+= Lucid
+
+Lucid is a server fleet management platform, designed to simplify the day to
+day maintenance tasks of systems administrators.
+
+Lucid provides inventory tracking, vulnerability alerting, compliance scanning
+and more.
+
+== Help & Documentation
+
+* https://roostmoe.github.io/lucid[Documentation] (Coming soon)
+* Join https://matrix.to/#/#lucid:hayden.moe[`#lucid:hayden.moe`] on Matrix for
+  help, support, or development discussions.
+
+== Reporting an issue
+
+If you believe you have found a bug in Lucid, please report it via a
+https://github.com/roostmoe/lucid/issues/new/choose[GitHub Issue].
+
+If you have a feature request, please also submit it via a GitHub Issue, but be
+sure to label it as a feature request.
+
+== Contributing
+
+Before contributing to Lucid, please read our
+link:./CONTRIBUTING.adoc[CONTRIBUTING] guidelines.
+
+== Acknowledgements
+
+* https://www.redhat.com/en/lightspeed[Red Hat Lightspeed], the initial
+  inspiration for this project.
+
+== License
+
+This project is licensed under the Apache 2.0 license. See
+link:./LICENSE[LICENSE] for more details.

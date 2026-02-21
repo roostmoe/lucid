@@ -1,0 +1,57 @@
+:showtitle:
+:toc: left
+:icons: font
+
+= Contributing Guildelines for Lucid
+
+Welcome! Thanks for checkout out Lucid, and taking the time to contribute!
+
+== Contributing to Lucid
+
+Lucid is a community driven project and we welcome contributions as well as
+feedback from the community. We do have a few guidelines in place to help you
+be successful in your contribution to Lucid.
+
+Firstly, if you want to contribute a larger change to Lucid we ask that you
+open a discussion first. For minor changes you can skip this and go straight to
+sending a contribution. Bear in mind that if you open a discussion first you
+can easily identify if your change will be accepted, as well as gather early
+feedback.
+
+Each PR, no matter how small, should have a GitHub issue associated with it.
+This is important for administrative purposes such as generating a changelog
+and handling backports.
+
+Here's a quick checklist for a good PR, more details below:
+
+1. A discussion around the change
+   (https://github.com/roostmoe/lucid/discussions/categories/ideas)
+2. A GitHub issue with a good description associated with the PR
+3. One feature/change per PR
+4. PR rebased on `main` (`git rebase`, not `git pull`/`git merge`!)
+5. A good, descriptive, concise series of commit messages that link to the
+   issue.
+6. No code changes not directly related to your PR
+7. Includes functional/integration tests for your changes
+8. Includes documentation updates for your changes (if applicable)
+
+Once you have submitted your PR, please monitor it for comments/feedback. We
+reserve the right to close inactive PRs if you do not respond within 2 weeks
+(bear in mind you can always open a new PR if it is closed due to inactivity).
+
+Also, please remember that Lucid is a volunteer-run project, and we have code
+to write and maintain ourselves, so we may not be able to respond to your PR
+immediately. The best place to ping us would be on Matrix
+(https://matrix.to/#/#lucid:hayden.moe[`#lucid:hayden.moe`]).
+
+=== Finding Something to Work On
+
+If you would like to contribute to Lucid, but are not exactly sure what to work
+on, you can find a number of open issues that are awaiting contributions in
+https://github.com/roostmoe/lucid/issues[Issues].
+
+== Reporting Vulnerabilities
+
+If you have found a security vulnerability in Lucid, please follow the
+guidelines in the link:./SECURITY.adoc[SECURITY.adoc] document to disclose it to
+us safely.
