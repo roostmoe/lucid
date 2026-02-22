@@ -27,3 +27,9 @@ ulid.workspace = true
 
 lucid-common.workspace = true
 lucid-db.workspace = true
+
+async-trait.workspace = true
+rand.workspace = true
+base64.workspace = true
+hmac.workspace = true
+sha2.workspace = true

@@ -13,14 +13,14 @@ use lucid_common::{
 };
 use mongodb::{
     Client, Database, IndexModel,
-    bson::doc,
+    bson::{DateTime as BsonDateTime, doc},
     options::{ClientOptions, FindOptions, IndexOptions},
 };
 use tracing::instrument;
 
 use crate::{
-    models::DbUser,
-    storage::{Storage, StoreError, UserFilter, UserStore},
+    models::{DbSession, DbUser},
+    storage::{SessionStore, Storage, StoreError, UserFilter, UserStore},
 };
 
 #[derive(Debug)]
@@ -55,12 +55,45 @@ impl MongoDBStorage {
     }
 
     async fn init(&self) -> Result<(), mongodb::error::Error> {
+        // Users collection indexes
         self.get_db()
             .collection::<()>(MONGODB_COLLECTION_USERS)
             .create_index(
                 IndexModel::builder()
                     .keys(doc! {"email": 1})
                     .options(IndexOptions::builder().unique(true).build())
+                    .build(),
+            )
+            .await?;
+
+        // Sessions collection indexes
+        let sessions_collection = self.get_db().collection::<()>(MONGODB_COLLECTION_SESSIONS);
+
+        // Unique index on session_id
+        sessions_collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"session_id": 1})
+                    .options(IndexOptions::builder().unique(true).build())
+                    .build(),
+            )
+            .await?;
+
+        // Index on user_id for finding user's sessions
+        sessions_collection
+            .create_index(IndexModel::builder().keys(doc! {"user_id": 1}).build())
+            .await?;
+
+        // TTL index on expires_at for automatic cleanup
+        sessions_collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"expires_at": 1})
+                    .options(
+                        IndexOptions::builder()
+                            .expire_after(Duration::from_secs(0))
+                            .build(),
+                    )
                     .build(),
             )
             .await?;
@@ -83,6 +116,7 @@ impl Storage for MongoDBStorage {
 }
 
 pub const MONGODB_COLLECTION_USERS: &str = "users";
+pub const MONGODB_COLLECTION_SESSIONS: &str = "console_sessions";
 
 #[async_trait]
 impl UserStore for MongoDBStorage {
@@ -195,4 +229,111 @@ fn verify_password(password: String, hash: String) -> Result<bool, String> {
     }
 
     Ok(true)
+}
+
+#[async_trait]
+impl SessionStore for MongoDBStorage {
+    #[instrument(skip(self), err(Debug))]
+    async fn create_session(
+        &self,
+        user_id: mongodb::bson::oid::ObjectId,
+        session_id: String,
+        csrf_token: String,
+        ttl: chrono::Duration,
+    ) -> Result<DbSession, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
+
+        let now = chrono::Utc::now();
+        let expires_at = now + ttl;
+
+        let new_session = DbSession {
+            id: None,
+            session_id,
+            user_id,
+            csrf_token,
+            created_at: now,
+            expires_at,
+            last_used_at: now,
+        };
+
+        let insert_result = collection.insert_one(new_session.clone()).await?;
+
+        Ok(DbSession {
+            id: insert_result.inserted_id.as_object_id(),
+            ..new_session
+        })
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn get_session(&self, session_id: &str) -> Result<Option<DbSession>, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
+
+        let session = collection.find_one(doc! {"session_id": session_id}).await?;
+
+        Ok(session)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn delete_session(&self, session_id: &str) -> Result<(), StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
+
+        collection
+            .delete_one(doc! {"session_id": session_id})
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn touch_session(&self, session_id: &str) -> Result<(), StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
+
+        let now = BsonDateTime::now();
+
+        collection
+            .update_one(
+                doc! {"session_id": session_id},
+                doc! {"$set": {"last_used_at": now}},
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn cleanup_expired_sessions(&self) -> Result<u64, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
+
+        let now = BsonDateTime::now();
+
+        let result = collection
+            .delete_many(doc! {"expires_at": {"$lt": now}})
+            .await?;
+
+        Ok(result.deleted_count)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn delete_user_sessions(
+        &self,
+        user_id: mongodb::bson::oid::ObjectId,
+    ) -> Result<u64, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
+
+        let result = collection.delete_many(doc! {"user_id": user_id}).await?;
+
+        Ok(result.deleted_count)
+    }
 }

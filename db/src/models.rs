@@ -72,3 +72,27 @@ impl ApiCaller for DbUser {
         Ok(vec![])
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbSession {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+
+    /// The unique session identifier (used in cookies)
+    pub session_id: String,
+
+    /// Reference to the authenticated user
+    pub user_id: ObjectId,
+
+    /// CSRF token for this session
+    pub csrf_token: String,
+
+    /// When the session was created
+    pub created_at: DateTime<Utc>,
+
+    /// When the session expires
+    pub expires_at: DateTime<Utc>,
+
+    /// Last time the session was used (for activity tracking)
+    pub last_used_at: DateTime<Utc>,
+}

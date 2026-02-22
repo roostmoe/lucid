@@ -18,12 +18,17 @@ use utoipa::{
 };
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::{config::LucidApiConfig, context::ApiContext, error::ApiError, handlers};
+use crate::{
+    auth::AuthManager, config::LucidApiConfig, context::ApiContext, error::ApiError, handlers,
+};
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
 pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
-    let context = ApiContext::new(cfg.clone())
+    // TODO: Wire up auth providers properly
+    let auth_manager = AuthManager::new();
+
+    let context = ApiContext::new(cfg.clone(), auth_manager)
         .await
         .expect("Failed to initialize API context");
 
@@ -39,20 +44,21 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
                 let request_id = req.headers().get(REQUEST_ID_HEADER);
                 let span = info_span!(
                     "http_request",
-                    method = req.method().to_string(),
-                    request_id = Option::<&str>::None,
-                    path = Option::<&str>::None,
+                    http.request.method = req.method().to_string(),
+                    http.request.id = Option::<&str>::None,
+                    http.route = Option::<&str>::None,
+                    url.full = Option::<&str>::None,
                 );
 
+                span.record("url.full", req.uri().path());
+
                 if let Some(request_id) = request_id {
-                    span.record("request_id", request_id.to_str().unwrap());
-                };
+                    span.record("http.request.id", request_id.to_str().unwrap());
+                }
 
                 if let Some(path) = req.extensions().get::<MatchedPath>() {
-                    span.record("path", path.as_str())
-                } else {
-                    span.record("path", req.uri().path())
-                };
+                    span.record("http.route", path.as_str());
+                }
 
                 span
             }),
