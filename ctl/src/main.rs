@@ -1,6 +1,9 @@
 use clap::{Parser, Subcommand};
-use lucid_common::params::CreateLocalUserParams;
-use lucid_db::storage::{UserStore, mongodb::MongoDBStorage};
+use lucid_db::storage::mongodb::MongoDBStorage;
+
+use crate::commands::CreateUserParams;
+
+mod commands;
 
 #[derive(Parser)]
 pub struct Args {
@@ -19,16 +22,7 @@ pub struct Args {
 #[derive(Clone, Subcommand)]
 pub enum Command {
     #[command(name = "create-user")]
-    CreateUser {
-        #[clap(short, long)]
-        display_name: String,
-
-        #[clap(short, long)]
-        email: String,
-
-        #[clap(short, long)]
-        password: String,
-    },
+    CreateUser(CreateUserParams),
 }
 
 #[tokio::main]
@@ -40,27 +34,10 @@ async fn main() {
         .expect("Failed to connect to MongoDB");
 
     match args.command {
-        Command::CreateUser {
-            display_name,
-            email,
-            password,
-        } => {
-            println!(
-                "Creating user with email: {} and password: {}",
-                email, password
-            );
-            let new_user = UserStore::create_local(
-                &stg,
-                CreateLocalUserParams {
-                    display_name,
-                    email,
-                    password,
-                },
-            )
-            .await
-            .expect("Failed to create user");
-
-            println!("Created user with ID {}", new_user.id.unwrap());
+        Command::CreateUser(params) => {
+            commands::create_user(&stg, params)
+                .await
+                .expect("Failed to create user");
         }
     }
 }
