@@ -13,8 +13,7 @@ use tower_http::{
 };
 use tracing::info_span;
 use utoipa::{
-    ToSchema,
-    openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation},
+    PartialSchema, ToSchema, openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation}
 };
 use utoipa_axum::{router::OpenApiRouter, routes};
 
@@ -104,6 +103,10 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .with_state(context)
         .split_for_parts();
 
+    a.components.as_mut().unwrap().schemas.insert(
+        ApiErrorResponse::name().to_string(),
+        ApiErrorResponse::schema(),
+    );
     a.paths.paths.iter_mut().for_each(|(_path, item)| {
         apply_default_errors(&mut item.get);
         apply_default_errors(&mut item.post);

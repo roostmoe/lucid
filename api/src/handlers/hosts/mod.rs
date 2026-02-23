@@ -13,7 +13,7 @@ use crate::error::ApiError;
 
 #[utoipa::path(
     get,
-    path = "/v1/hosts",
+    path = "/api/v1/hosts",
     tags = ["hosts"],
     responses((status = 200, description = "List of hosts", body = PaginatedList<Host>))
 )]
@@ -29,7 +29,7 @@ pub async fn list_hosts(
 
 #[utoipa::path(
     get,
-    path = "/v1/hosts/{id}",
+    path = "/api/v1/hosts/{id}",
     tags = ["hosts"],
     responses((status = 200, description = "Resolved host", body = Host))
 )]

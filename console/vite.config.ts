@@ -16,4 +16,12 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        // TODO: Delegate this to an environment variable
+        target: 'http://localhost:4000',
+      }
+    }
+  },
 })

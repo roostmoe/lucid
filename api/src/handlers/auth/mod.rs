@@ -11,7 +11,7 @@ use crate::{context::ApiContext, error::ApiError};
 
 #[utoipa::path(
     post,
-    path = "/v1/auth/login",
+    path = "/api/v1/auth/login",
     tags = ["auth", "console_sessions"],
     request_body(content = AuthLoginParams, content_type = "application/json"),
     responses((status = 201, description = "Successful login", body = AuthLoginResponse))
@@ -30,7 +30,7 @@ pub async fn auth_login(
 
 #[utoipa::path(
     post,
-    path = "/v1/auth/logout",
+    path = "/api/v1/auth/logout",
     tags = ["auth", "console_sessions"],
     responses((status = 200, description = "Successful logout"))
 )]
@@ -40,7 +40,7 @@ pub async fn auth_logout() -> String {
 
 #[utoipa::path(
     get,
-    path = "/v1/auth/me",
+    path = "/api/v1/auth/me",
     tags = ["auth"],
     responses((status = 200, description = "User information", body = User))
 )]
