@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use anyhow::anyhow;
 use argon2::{
@@ -6,6 +6,7 @@ use argon2::{
     password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 use async_trait::async_trait;
+use chrono::Utc;
 use futures::TryStreamExt;
 use lucid_common::{
     caller::Caller,
@@ -13,10 +14,10 @@ use lucid_common::{
 };
 use mongodb::{
     Client, Database, IndexModel,
-    bson::{DateTime as BsonDateTime, doc},
+    bson::{DateTime as BsonDateTime, doc, oid::ObjectId},
     options::{ClientOptions, FindOptions, IndexOptions},
 };
-use tracing::instrument;
+use tracing::{info, instrument};
 
 use crate::{
     models::{DbSession, DbUser},
@@ -147,11 +148,21 @@ impl UserStore for MongoDBStorage {
 
         let mut filter_doc = doc! {};
         if let Some(ids) = filter.id {
-            filter_doc.insert("_id", doc! { "$in": &ids });
+            let object_ids: Vec<ObjectId> = ids
+                .into_iter()
+                .filter_map(|id| ObjectId::from_str(&id).ok())
+                .collect();
+
+            filter_doc.insert("_id", doc! { "$in": object_ids });
         }
         if let Some(emails) = filter.email {
             filter_doc.insert("email", doc! { "$in": &emails });
         }
+
+        info!(
+            "Finding users with {filter}",
+            filter = filter_doc.to_string()
+        );
 
         collection
             .find(filter_doc)
@@ -203,7 +214,7 @@ impl UserStore for MongoDBStorage {
         if matches {
             Ok(user.to_caller())
         } else {
-            Ok(Caller::Unauthenticated)
+            Err(StoreError::InvalidCredentials)
         }
     }
 }
@@ -296,12 +307,12 @@ impl SessionStore for MongoDBStorage {
             .get_db()
             .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
 
-        let now = BsonDateTime::now();
+        let bson_now = BsonDateTime::from_chrono(Utc::now());
 
         collection
             .update_one(
                 doc! {"session_id": session_id},
-                doc! {"$set": {"last_used_at": now}},
+                doc! {"$set": {"last_used_at": bson_now}},
             )
             .await?;
 
@@ -314,10 +325,10 @@ impl SessionStore for MongoDBStorage {
             .get_db()
             .collection::<DbSession>(MONGODB_COLLECTION_SESSIONS);
 
-        let now = BsonDateTime::now();
+        let bson_now = BsonDateTime::from_chrono(Utc::now());
 
         let result = collection
-            .delete_many(doc! {"expires_at": {"$lt": now}})
+            .delete_many(doc! {"expires_at": {"$lt": bson_now}})
             .await?;
 
         Ok(result.deleted_count)

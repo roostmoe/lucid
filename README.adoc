@@ -28,6 +28,11 @@ flags.
 The API uses Ed25519 digital signatures for session token authentication. You
 must provide a signing key for the API to start.
 
+All authenticated requests are associated with a **Caller** (user, agent, service
+account, or system) who has specific **Roles** and **Permissions**. See
+link:./docs/ARCHITECTURE_AUTH.adoc[Authentication & Authorization Architecture]
+for details on Lucid's RBAC system.
+
 **Generate a signing key:**
 
 [source,bash]

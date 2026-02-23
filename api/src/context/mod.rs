@@ -16,6 +16,7 @@ pub struct ApiContext {
     pub _config: LucidApiConfig,
     pub db: Arc<dyn Storage>,
     pub auth_manager: Arc<AuthManager>,
+    pub session_signer: SessionSigner<Ed25519Signer>,
 }
 
 impl ApiContext {
@@ -29,13 +30,16 @@ impl ApiContext {
         let session_signer = SessionSigner::new(ed25519_signer);
 
         // Wire up auth providers
-        let auth_manager = AuthManager::new()
-            .with_provider(SessionAuthProvider::new(session_signer, Arc::clone(&db)));
+        let auth_manager = AuthManager::new().with_provider(SessionAuthProvider::new(
+            session_signer.clone(),
+            Arc::clone(&db),
+        ));
 
         Ok(Self {
             _config: config,
             db,
             auth_manager: Arc::new(auth_manager),
+            session_signer,
         })
     }
 }

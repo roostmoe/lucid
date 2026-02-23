@@ -1,12 +1,13 @@
-use std::{fmt::Display, sync::Arc};
+use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
 use lucid_common::{
-    caller::{ApiCaller, Caller, CallerKind},
+    caller::{Caller, Role},
     views::User,
 };
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
+use bson::serde_helpers::datetime::FromChrono04DateTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbUser {
@@ -15,6 +16,7 @@ pub struct DbUser {
     pub display_name: String,
     pub email: String,
     pub password_hash: Option<String>,
+    #[serde(with = "FromChrono04DateTime")]
     pub updated_at: DateTime<Utc>,
 }
 
@@ -38,8 +40,17 @@ impl DbUser {
         }
     }
 
+    /// Convert this database user into a Caller for permission checking.
+    ///
+    /// TODO: Fetch actual roles from the database instead of hardcoding Admin.
+    /// Should query a separate `user_roles` collection or embedded roles array.
     pub fn to_caller(&self) -> Caller {
-        Caller::Authenticated(Arc::new(self.clone()))
+        Caller::User {
+            id: self.id.unwrap().to_string(),
+            display_name: self.display_name.clone(),
+            email: self.email.clone(),
+            roles: vec![Role::Admin], // TODO: get from DB
+        }
     }
 }
 
@@ -58,21 +69,6 @@ impl From<DbUser> for User {
     }
 }
 
-impl ApiCaller for DbUser {
-    fn kind(&self) -> CallerKind {
-        CallerKind::User
-    }
-
-    fn id(&self) -> anyhow::Result<String> {
-        Ok(self.id.unwrap().to_string())
-    }
-
-    fn permissions(&self) -> anyhow::Result<Vec<String>> {
-        // For simplicity, we return an empty list of permissions.
-        Ok(vec![])
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbSession {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
@@ -88,11 +84,14 @@ pub struct DbSession {
     pub csrf_token: String,
 
     /// When the session was created
+    #[serde(with = "FromChrono04DateTime")]
     pub created_at: DateTime<Utc>,
 
     /// When the session expires
+    #[serde(with = "FromChrono04DateTime")]
     pub expires_at: DateTime<Utc>,
 
     /// Last time the session was used (for activity tracking)
+    #[serde(with = "FromChrono04DateTime")]
     pub last_used_at: DateTime<Utc>,
 }

@@ -13,7 +13,8 @@ use tower_http::{
 };
 use tracing::info_span;
 use utoipa::{
-    PartialSchema, ToSchema, openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation}
+    PartialSchema, ToSchema,
+    openapi::{Contact, Info, License, OpenApi, RefOr, Response, path::Operation},
 };
 use utoipa_axum::{router::OpenApiRouter, routes};
 

@@ -6,8 +6,14 @@ This directory contains technical documentation for the Lucid fleet management p
 
 * link:../README.adoc[Main README] - Project overview and basic configuration
 
+== API Reference
+
+* link:API_SESSIONS.adoc[Session API Reference] - Session authentication endpoints
+
 == Authentication & Security
 
+* link:AUTH_QUICKREF.adoc[Authentication Quick Reference] - Common patterns and examples
+* link:ARCHITECTURE_AUTH.adoc[Authentication & Authorization Architecture] - RBAC system overview
 * link:README_ED25519.adoc[Ed25519 Documentation Index] - Complete guide to signing system docs
 * link:SECURITY_ED25519.adoc[Security Considerations] - Security best practices for signing keys
 * link:MIGRATION_HMAC_TO_ED25519.adoc[HMAC to Ed25519 Migration] - Upgrade guide for operators

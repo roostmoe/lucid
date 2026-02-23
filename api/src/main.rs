@@ -18,7 +18,7 @@ async fn main() {
             tracing_subscriber::fmt()
                 .with_env_filter(
                     EnvFilter::try_from_default_env()
-                        .unwrap_or("lucid_api=info,lucid_common=info".into()),
+                        .unwrap_or("lucid_api=info,lucid_common=info,lucid_db=info".into()),
                 )
                 .pretty()
                 .init();

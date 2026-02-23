@@ -7,7 +7,10 @@ use utoipa::ToSchema;
 pub enum AuthLoginResponse {
     /// The session cookie for the authenticated user. This cookie should be
     /// included in subsequent requests to authenticate the user.
-    Session,
+    Session {
+        /// CSRF token that must be included in X-CSRF-Token header for mutating requests
+        csrf_token: String,
+    },
 
     /// The access token for the authenticated user. This token should be
     /// included in the `Authorization` header of subsequent requests to

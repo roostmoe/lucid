@@ -35,9 +35,9 @@
 //! # }
 //! ```
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{
-    Signature, Signer as DalekSigner, SigningKey, Verifier, VerifyingKey, SECRET_KEY_LENGTH,
+    SECRET_KEY_LENGTH, Signature, Signer as DalekSigner, SigningKey, Verifier, VerifyingKey,
 };
 use thiserror::Error;
 
@@ -104,6 +104,7 @@ pub enum SigningError {
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct Ed25519Signer {
     signing_key: SigningKey,
     verifying_key: VerifyingKey,
@@ -225,6 +226,7 @@ impl Signer for Ed25519Signer {
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct SessionSigner<S: Signer> {
     signer: S,
 }

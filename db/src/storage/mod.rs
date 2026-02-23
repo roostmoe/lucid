@@ -18,6 +18,9 @@ pub enum StoreError {
     #[error("Resource not found")]
     NotFound,
 
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+
     #[error("Query Error: {0}")]
     MongoDB(#[from] ::mongodb::error::Error),
 
