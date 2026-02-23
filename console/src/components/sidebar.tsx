@@ -55,11 +55,11 @@ export const AppSidebarNavMain = () => {
 };
 
 export const AppSidebarNavUser = () => {
-  const user = useAuth().user;
+  const { user, logout } = useAuth();
 
   return (
-    <>
+    <span onClick={() => logout()}>
       Hello, {user?.display_name}.
-    </>
+    </span>
   );
 };
