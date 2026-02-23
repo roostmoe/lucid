@@ -2,6 +2,7 @@
 _.path = ["{{config_root}}/node_modules/.bin"]
 
 LUCID_API_DB_URL = "mongodb://localhost:27017/lucid"
+LUCID_API_SIGNING_KEY_FILE = "{{config_root}}/config/local/signing_key.pem"
 
 [tools]
 bun = "1.3.6"
