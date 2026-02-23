@@ -9,14 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConsoleRouteImport } from './routes/_console'
+import { Route as ConsoleIndexRouteImport } from './routes/_console/index'
 import { Route as authAuthRouteImport } from './routes/(auth)/_auth'
 import { Route as authAuthAuthLoginRouteImport } from './routes/(auth)/_auth/auth.login'
 
-const IndexRoute = IndexRouteImport.update({
+const ConsoleRoute = ConsoleRouteImport.update({
+  id: '/_console',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsoleIndexRoute = ConsoleIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => ConsoleRoute,
 } as any)
 const authAuthRoute = authAuthRouteImport.update({
   id: '/(auth)/_auth',
@@ -29,17 +34,18 @@ const authAuthAuthLoginRoute = authAuthAuthLoginRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof ConsoleIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof ConsoleIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_console': typeof ConsoleRouteWithChildren
   '/(auth)/_auth': typeof authAuthRouteWithChildren
+  '/_console/': typeof ConsoleIndexRoute
   '/(auth)/_auth/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRouteTypes {
@@ -47,22 +53,34 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/auth/login'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/auth/login'
-  id: '__root__' | '/' | '/(auth)/_auth' | '/(auth)/_auth/auth/login'
+  id:
+    | '__root__'
+    | '/_console'
+    | '/(auth)/_auth'
+    | '/_console/'
+    | '/(auth)/_auth/auth/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  ConsoleRoute: typeof ConsoleRouteWithChildren
   authAuthRoute: typeof authAuthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_console': {
+      id: '/_console'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_console/': {
+      id: '/_console/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ConsoleIndexRouteImport
+      parentRoute: typeof ConsoleRoute
     }
     '/(auth)/_auth': {
       id: '/(auth)/_auth'
@@ -81,6 +99,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ConsoleRouteChildren {
+  ConsoleIndexRoute: typeof ConsoleIndexRoute
+}
+
+const ConsoleRouteChildren: ConsoleRouteChildren = {
+  ConsoleIndexRoute: ConsoleIndexRoute,
+}
+
+const ConsoleRouteWithChildren =
+  ConsoleRoute._addFileChildren(ConsoleRouteChildren)
+
 interface authAuthRouteChildren {
   authAuthAuthLoginRoute: typeof authAuthAuthLoginRoute
 }
@@ -94,7 +123,7 @@ const authAuthRouteWithChildren = authAuthRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  ConsoleRoute: ConsoleRouteWithChildren,
   authAuthRoute: authAuthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
