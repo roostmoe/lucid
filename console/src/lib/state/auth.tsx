@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type PropsWithChildren 
 import type { User } from "../client";
 import { useQuery } from "@tanstack/react-query";
 import { authWhoamiOptions } from "../client/@tanstack/react-query.gen";
+import { redirect } from "@tanstack/react-router";
 
 export type AuthContext = {
   loading: boolean;
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
   const { data: user, isLoading, error } = useQuery({
     ...authWhoamiOptions(),
+    retry: false,
   });
 
   useEffect(() => {

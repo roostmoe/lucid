@@ -5,15 +5,22 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type React from "react";
 import { authLoginMutation } from "@/lib/client/@tanstack/react-query.gen";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { redirect } from "@tanstack/react-router";
 import { useState, type SubmitEvent } from "react";
 
 export const LoginForm = (
   { className, ...props }: React.ComponentProps<"div">,
 ) => {
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { mutate } = useMutation(authLoginMutation());
+  const { mutate } = useMutation({
+    ...authLoginMutation(),
+    onSuccess: () => {
+      throw redirect({ to: '/' });
+    },
+  });
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
