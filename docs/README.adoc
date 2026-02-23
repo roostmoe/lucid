@@ -1,0 +1,29 @@
+= Lucid Documentation
+
+This directory contains technical documentation for the Lucid fleet management platform.
+
+== Getting Started
+
+* link:../README.adoc[Main README] - Project overview and basic configuration
+
+== Authentication & Security
+
+* link:README_ED25519.adoc[Ed25519 Documentation Index] - Complete guide to signing system docs
+* link:SECURITY_ED25519.adoc[Security Considerations] - Security best practices for signing keys
+* link:MIGRATION_HMAC_TO_ED25519.adoc[HMAC to Ed25519 Migration] - Upgrade guide for operators
+
+== Development
+
+* link:../AGENTS.md[Agent Guidelines] - Coding standards for Lucid development
+* link:../CONTRIBUTING.adoc[Contributing Guidelines] - How to contribute to Lucid
+* link:CHECKLIST_SIGNING_CHANGES.adoc[Signing System Checklist] - Checklist for modifying signing code
+
+== Release Information
+
+* link:../CHANGELOG.adoc[Changelog] - Version history and release notes
+
+== External Resources
+
+* https://roostmoe.github.io/lucid[Official Documentation] (coming soon)
+* https://matrix.to/#/#lucid:hayden.moe[Matrix Chat] - Support and development discussions
+* https://github.com/roostmoe/lucid[GitHub Repository] - Source code and issues

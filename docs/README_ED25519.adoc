@@ -1,0 +1,126 @@
+= Documentation Summary: Ed25519 Session Signing
+
+This document provides an index of all documentation related to the Ed25519 session
+signing implementation.
+
+== For Operators
+
+=== Quick Start
+
+See the **Configuration** section in link:../README.adoc[README.adoc] for:
+- How to generate an Ed25519 signing key
+- Environment variable configuration options
+- Basic security guidelines
+
+**TL;DR:**
+[source,bash]
+----
+# Generate key
+openssl genpkey -algorithm ED25519 -out signing_key.pem
+
+# Configure
+export LUCID_API_SIGNING_KEY_FILE=/path/to/signing_key.pem
+
+# Start API
+lucid-api
+----
+
+=== Migration
+
+If upgrading from HMAC-based sessions, see:
+
+* link:MIGRATION_HMAC_TO_ED25519.adoc[MIGRATION_HMAC_TO_ED25519.adoc]
+  - Step-by-step migration process
+  - Impact on existing sessions
+  - Key rotation procedures
+  - Troubleshooting guide
+
+=== Security
+
+For production deployments, read:
+
+* link:SECURITY_ED25519.adoc[SECURITY_ED25519.adoc]
+  - Key management best practices
+  - Secrets storage recommendations
+  - Token security considerations
+  - Threat model and protections
+  - Compliance and audit information
+  - Incident response procedures
+
+== For Developers
+
+=== API Documentation
+
+Rust API documentation is available via:
+
+[source,bash]
+----
+cargo doc --open --package lucid-api
+----
+
+Key modules:
+- `lucid_api::auth::signing` - Core signing traits and implementations
+- `lucid_api::config::LucidApiConfig` - Configuration structure
+
+=== Architecture
+
+The signing system consists of three layers:
+
+1. **`Signer` trait** (`api/src/auth/signing.rs`)
+   - Generic interface for any signing algorithm
+   - Not specific to sessions or tokens
+   - Future-proof for JWT, webhooks, etc.
+
+2. **`Ed25519Signer`** (`api/src/auth/signing.rs`)
+   - Concrete implementation using Ed25519
+   - Handles PEM key loading and PKCS#8 parsing
+   - Thread-safe for use in async contexts
+
+3. **`SessionSigner<S: Signer>`** (`api/src/auth/signing.rs`)
+   - Session-specific wrapper
+   - Enforces `{session_id}.{signature}` format
+   - Base64 encoding for HTTP compatibility
+
+=== Code Examples
+
+See the module-level documentation in `api/src/auth/signing.rs` for:
+- Basic usage examples
+- Error handling
+- Integration patterns
+
+=== Tests
+
+Comprehensive test suite in `api/src/auth/signing.rs`:
+- Key loading validation
+- Signature roundtrip tests
+- Tampering detection
+- Edge case handling
+- Cross-key verification
+
+Run tests:
+[source,bash]
+----
+cargo test --package lucid-api signing
+----
+
+== Changelog
+
+See link:../CHANGELOG.adoc[CHANGELOG.adoc] for version history and breaking changes.
+
+== Questions?
+
+- **Bug reports:** https://github.com/roostmoe/lucid/issues
+- **Security issues:** See SECURITY.md (if exists) or open a private issue
+- **Discussion:** Matrix at `#lucid:hayden.moe`
+
+== Documentation Maintenance
+
+This documentation was created as part of the HMAC-to-Ed25519 migration.
+
+**Last updated:** 2026-02-23
+
+**Maintainers:** Keep these docs in sync with code changes:
+- Update examples if API changes
+- Revise security docs if threat model evolves
+- Add new configuration options to README
+- Update CHANGELOG for each release

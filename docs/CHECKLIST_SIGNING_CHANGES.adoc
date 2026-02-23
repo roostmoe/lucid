@@ -1,0 +1,163 @@
+= Developer Checklist: Modifying the Signing System
+
+Use this checklist when making changes to the Ed25519 signing implementation.
+
+== Before Making Changes
+
+- [ ] Read link:SECURITY_ED25519.adoc[security documentation]
+- [ ] Understand the current architecture (see link:README_ED25519.adoc[documentation index])
+- [ ] Check if your change affects the token format (breaking change!)
+- [ ] Consider backward compatibility implications
+
+== Code Changes
+
+=== If Modifying `Signer` Trait
+
+- [ ] Update trait documentation
+- [ ] Update module-level examples
+- [ ] Check all implementations (`Ed25519Signer`, tests, mocks)
+- [ ] Update error types if needed
+- [ ] Run all tests: `cargo test --package lucid-api signing`
+
+=== If Modifying `Ed25519Signer`
+
+- [ ] Update key format documentation if PEM structure changes
+- [ ] Add tests for new validation logic
+- [ ] Test with real OpenSSL-generated keys
+- [ ] Update error messages for clarity
+- [ ] Consider security implications (timing attacks, key leakage)
+
+=== If Modifying `SessionSigner`
+
+- [ ] **WARNING:** Token format changes are BREAKING
+- [ ] Document the new format clearly
+- [ ] Add migration guide if breaking
+- [ ] Update format examples in rustdoc
+- [ ] Test token round-tripping thoroughly
+- [ ] Test tampering detection still works
+
+=== If Adding a New Signer Implementation
+
+- [ ] Implement `Signer` trait
+- [ ] Add comprehensive tests (use `Ed25519Signer` tests as template)
+- [ ] Document the algorithm and key format
+- [ ] Add usage examples
+- [ ] Consider thread-safety (`Send + Sync`)
+- [ ] Document performance characteristics
+
+== Testing
+
+Required tests for ANY signing changes:
+
+- [ ] Basic sign/verify roundtrip works
+- [ ] Invalid keys are rejected with clear errors
+- [ ] Signature tampering is detected
+- [ ] Payload tampering is detected
+- [ ] Cross-key verification fails (signatures from different keys)
+- [ ] Edge cases (empty payloads, special characters, etc.)
+- [ ] Thread safety (if applicable)
+
+Run tests:
+[source,bash]
+----
+# Unit tests
+cargo test --package lucid-api signing
+
+# Integration tests (if applicable)
+cargo test --package lucid-api --test '*'
+
+# Doctests
+cargo test --package lucid-api --doc signing
+----
+
+== Documentation Updates
+
+- [ ] Update rustdoc comments for changed items
+- [ ] Update module-level documentation (`//!` comments)
+- [ ] Update examples if API changed
+- [ ] Update link:../README.adoc[README.adoc] if config changed
+- [ ] Add entry to link:../CHANGELOG.adoc[CHANGELOG.adoc]
+- [ ] Create migration guide if breaking change
+- [ ] Update link:SECURITY_ED25519.adoc[security docs] if threat model changed
+
+== Configuration Changes
+
+If adding/changing config options:
+
+- [ ] Update `LucidApiConfig` in `api/src/config.rs`
+- [ ] Add rustdoc comments with examples
+- [ ] Update environment variable documentation in README
+- [ ] Add validation for new config options
+- [ ] Test config loading errors have clear messages
+- [ ] Update link:MIGRATION_HMAC_TO_ED25519.adoc[migration guide] if relevant
+
+== Security Review
+
+For security-sensitive changes:
+
+- [ ] Have another developer review the code
+- [ ] Check for timing attack vulnerabilities
+- [ ] Verify no key material in logs/errors
+- [ ] Test error messages don't leak sensitive info
+- [ ] Consider constant-time operations for crypto
+- [ ] Update link:SECURITY_ED25519.adoc[SECURITY_ED25519.adoc] threat model
+
+== Before Merging
+
+- [ ] All tests pass: `cargo test --workspace`
+- [ ] Code formatted: `cargo fmt --check`
+- [ ] No clippy warnings: `cargo clippy --workspace -- -D warnings`
+- [ ] Documentation builds: `cargo doc --no-deps --package lucid-api`
+- [ ] CHANGELOG.adoc updated
+- [ ] Migration guide created (if breaking)
+- [ ] Security review completed (if security-sensitive)
+
+== Breaking Changes
+
+If your change breaks backward compatibility:
+
+- [ ] Mark as **BREAKING** in CHANGELOG
+- [ ] Create migration guide in `docs/MIGRATION_*.adoc`
+- [ ] Update README with migration link
+- [ ] Bump major version number (when preparing release)
+- [ ] Add deprecation warnings in previous version (if possible)
+- [ ] Communicate in release notes and Matrix channel
+
+== Post-Merge
+
+- [ ] Monitor for issues after deployment
+- [ ] Watch for increased signature verification failures
+- [ ] Check error logs for new error patterns
+- [ ] Verify key loading works in production environment
+
+== Examples of Changes and Required Updates
+
+[cols="2,3"]
+|===
+|Change Type |Required Documentation Updates
+
+|New config option
+|README, config.rs rustdoc, CHANGELOG
+
+|Token format change
+|**BREAKING**, CHANGELOG, migration guide, rustdoc examples, README
+
+|New `Signer` impl
+|Module docs, usage examples, CHANGELOG
+
+|Security fix
+|CHANGELOG, security docs, possibly migration guide
+
+|Performance improvement
+|CHANGELOG (nice to have)
+
+|Bug fix
+|CHANGELOG, add regression test
+|===
+
+== Questions?
+
+If unsure about any step, ask before proceeding:
+- Matrix: `#lucid:hayden.moe`
+- Open a GitHub discussion
+- Tag a maintainer in your PR

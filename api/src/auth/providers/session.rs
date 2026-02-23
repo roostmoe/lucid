@@ -6,26 +6,27 @@ use lucid_common::caller::Caller;
 use lucid_db::storage::{SessionStore, Storage, UserStore};
 use tracing::instrument;
 
-use crate::auth::{error::AuthError, provider::AuthProvider, signing::SessionSigner};
+use crate::auth::{
+    error::AuthError,
+    provider::AuthProvider,
+    signing::{SessionSigner, Signer},
+};
 
 const COOKIE_NAME: &str = "lucid_session";
 const CSRF_HEADER: &str = "X-CSRF-Token";
 
-pub struct SessionAuthProvider {
-    signer: SessionSigner,
+pub struct SessionAuthProvider<S: Signer> {
+    signer: SessionSigner<S>,
     db: Arc<dyn Storage>,
 }
 
-impl SessionAuthProvider {
-    pub fn new(secret: [u8; 32], db: Arc<dyn Storage>) -> Self {
-        Self {
-            signer: SessionSigner::new(secret),
-            db,
-        }
+impl<S: Signer> SessionAuthProvider<S> {
+    pub fn new(signer: SessionSigner<S>, db: Arc<dyn Storage>) -> Self {
+        Self { signer, db }
     }
 
     /// Sign a session ID: returns "session_id.signature"
-    pub fn sign(&self, session_id: &str) -> String {
+    pub fn sign(&self, session_id: &str) -> Result<String, crate::auth::signing::SigningError> {
         self.signer.sign(session_id)
     }
 
@@ -54,7 +55,7 @@ impl SessionAuthProvider {
 }
 
 #[async_trait]
-impl AuthProvider for SessionAuthProvider {
+impl<S: Signer> AuthProvider for SessionAuthProvider<S> {
     #[instrument(skip(self, parts), fields(scheme = "session"))]
     async fn authenticate(&self, parts: &Parts) -> Result<Caller, AuthError> {
         // 1. Extract session cookie
@@ -109,6 +110,10 @@ impl AuthProvider for SessionAuthProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::signing::Ed25519Signer;
+
+    // Helper type for tests
+    type TestSessionAuthProvider = SessionAuthProvider<Ed25519Signer>;
 
     #[test]
     fn test_extract_cookie_basic() {
@@ -120,13 +125,13 @@ mod tests {
                 .unwrap(),
         );
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "lucid_session");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "lucid_session");
         assert_eq!(result, Some("abc123".to_string()));
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "foo");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "foo");
         assert_eq!(result, Some("bar".to_string()));
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "other");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "other");
         assert_eq!(result, Some("value".to_string()));
     }
 
@@ -135,14 +140,14 @@ mod tests {
         let mut headers = header::HeaderMap::new();
         headers.insert(header::COOKIE, "foo=bar".parse().unwrap());
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "nonexistent");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "nonexistent");
         assert_eq!(result, None);
     }
 
     #[test]
     fn test_extract_cookie_no_cookie_header() {
         let headers = header::HeaderMap::new();
-        let result = SessionAuthProvider::extract_cookie(&headers, "anything");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "anything");
         assert_eq!(result, None);
     }
 
@@ -156,7 +161,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "cookie2");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "cookie2");
         assert_eq!(result, Some("value2".to_string()));
     }
 
@@ -165,7 +170,7 @@ mod tests {
         let mut headers = header::HeaderMap::new();
         headers.insert(header::COOKIE, "empty=; other=value".parse().unwrap());
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "empty");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "empty");
         assert_eq!(result, Some("".to_string()));
     }
 
@@ -177,31 +182,31 @@ mod tests {
             "session=old; lucid_session=new".parse().unwrap(),
         );
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "session");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "session");
         assert_eq!(result, Some("old".to_string()));
 
-        let result = SessionAuthProvider::extract_cookie(&headers, "lucid_session");
+        let result = TestSessionAuthProvider::extract_cookie(&headers, "lucid_session");
         assert_eq!(result, Some("new".to_string()));
     }
 
     #[test]
     fn test_requires_csrf_safe_methods() {
-        assert!(!SessionAuthProvider::requires_csrf(&Method::GET));
-        assert!(!SessionAuthProvider::requires_csrf(&Method::HEAD));
-        assert!(!SessionAuthProvider::requires_csrf(&Method::OPTIONS));
+        assert!(!TestSessionAuthProvider::requires_csrf(&Method::GET));
+        assert!(!TestSessionAuthProvider::requires_csrf(&Method::HEAD));
+        assert!(!TestSessionAuthProvider::requires_csrf(&Method::OPTIONS));
     }
 
     #[test]
     fn test_requires_csrf_mutating_methods() {
-        assert!(SessionAuthProvider::requires_csrf(&Method::POST));
-        assert!(SessionAuthProvider::requires_csrf(&Method::PUT));
-        assert!(SessionAuthProvider::requires_csrf(&Method::PATCH));
-        assert!(SessionAuthProvider::requires_csrf(&Method::DELETE));
+        assert!(TestSessionAuthProvider::requires_csrf(&Method::POST));
+        assert!(TestSessionAuthProvider::requires_csrf(&Method::PUT));
+        assert!(TestSessionAuthProvider::requires_csrf(&Method::PATCH));
+        assert!(TestSessionAuthProvider::requires_csrf(&Method::DELETE));
     }
 
     #[test]
     fn test_requires_csrf_trace_method() {
         // TRACE should also require CSRF
-        assert!(SessionAuthProvider::requires_csrf(&Method::TRACE));
+        assert!(TestSessionAuthProvider::requires_csrf(&Method::TRACE));
     }
 }

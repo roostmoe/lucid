@@ -1,0 +1,171 @@
+= Security Considerations: Ed25519 Session Signing
+
+This document outlines security best practices and considerations for the Ed25519
+signing implementation in Lucid.
+
+== Key Management
+
+=== Generation
+
+ALWAYS generate keys using a cryptographically secure method:
+
+[source,bash]
+----
+# Correct: Uses OpenSSL's secure random number generator
+openssl genpkey -algorithm ED25519 -out signing_key.pem
+
+# NEVER: Do not use weak/predictable key generation
+----
+
+=== Storage
+
+**Development:**
+- Store keys outside the repository (use `.gitignore`)
+- Restrict file permissions: `chmod 600 signing_key.pem`
+
+**Production:**
+- Use secrets management systems:
+  * HashiCorp Vault
+  * Kubernetes Secrets
+  * AWS Secrets Manager
+  * Azure Key Vault
+- Mount secrets as files, not environment variables (avoids process listings)
+- Consider hardware security modules (HSMs) for high-security environments
+
+**Never:**
+- Commit keys to version control
+- Include keys in container images
+- Log key material
+- Share keys via insecure channels (email, chat)
+
+=== Rotation
+
+Rotate signing keys periodically:
+
+- **Frequency:** Every 90-180 days minimum
+- **Triggers:** After suspected compromise, staff departure, security audits
+- **Process:** See link:./MIGRATION_HMAC_TO_ED25519.adoc[migration guide]
+
+== Token Security
+
+=== Session Token Format
+
+Current format: `{session_id}.{base64_signature}`
+
+**Properties:**
+- Session ID is *not* encrypted (visible in plaintext)
+- Signature prevents tampering but doesn't hide data
+- Use HTTPS to protect tokens in transit
+
+**Implications:**
+- Session IDs should be random, not contain sensitive data
+- Tokens should be treated as bearer credentials
+- Short expiration times are recommended (handled by session storage)
+
+=== Token Transmission
+
+- ALWAYS use HTTPS in production
+- Set `Secure` flag on session cookies
+- Set `HttpOnly` flag to prevent JavaScript access
+- Consider `SameSite=Strict` for CSRF protection
+
+== Threat Model
+
+=== What Ed25519 Signing Protects Against
+
+✓ **Token tampering:** Attackers cannot modify session IDs without detection
+
+✓ **Session forgery:** Without the private key, attackers cannot create valid tokens
+
+✓ **Replay with modification:** Changing any part of the token invalidates the signature
+
+=== What It Does NOT Protect Against
+
+✗ **Token theft:** If an attacker steals a valid token, they can use it
+
+✗ **Session fixation:** Application logic must prevent session ID reuse
+
+✗ **Timing attacks:** Token verification could theoretically leak information via timing
+(Ed25519 implementations include constant-time operations to mitigate this)
+
+✗ **Compromised signing key:** If the private key is stolen, all security is lost
+
+== Implementation Details
+
+=== Signature Scheme
+
+- **Algorithm:** Ed25519 (RFC 8032)
+- **Hash:** SHA-512 (inherent to Ed25519)
+- **Key size:** 256 bits (32 bytes)
+- **Signature size:** 512 bits (64 bytes)
+
+=== Why Ed25519?
+
+**Security:**
+- Collision-resistant
+- Immune to length-extension attacks
+- Constant-time operations (timing attack resistant)
+- No known practical cryptanalysis
+
+**Performance:**
+- Extremely fast signing (~65,000 signatures/sec on modern CPUs)
+- Fast verification (~20,000 verifications/sec)
+
+**Future-proof:**
+- Supports JWT signing for API tokens
+- Enables distributed verification (public key can be shared safely)
+- Key rotation without API downtime (future: multiple active keys)
+
+== Compliance
+
+=== Standards
+
+- RFC 8032: Edwards-Curve Digital Signature Algorithm (EdDSA)
+- PKCS#8: Private key format
+- PEM: Key encoding (RFC 7468)
+
+=== Audit Considerations
+
+For security audits, provide:
+- This security documentation
+- Key rotation procedures
+- Secrets management implementation details
+- Token expiration policies
+- HTTPS/TLS configuration
+
+== Monitoring & Incident Response
+
+=== Logging
+
+DO log:
+- Signature verification failures (potential attack)
+- Key loading errors
+- Configuration issues
+
+DO NOT log:
+- Private key material
+- Valid session tokens
+- Full signing key paths (leak risk)
+
+=== Signs of Compromise
+
+Watch for:
+- Sudden spike in signature verification failures
+- Valid tokens for nonexistent sessions
+- Unusual token patterns
+
+=== Incident Response
+
+If the signing key is compromised:
+
+1. **Immediately:** Rotate the key (all sessions will be invalidated)
+2. **Investigate:** Review access logs, determine exposure scope
+3. **Notify:** Follow your incident response policy
+4. **Monitor:** Watch for abuse patterns
+5. **Document:** Record the incident for future prevention
+
+== Additional Resources
+
+- https://ed25519.cr.yp.to/[Ed25519 High-speed high-security signatures]
+- https://datatracker.ietf.org/doc/html/rfc8032[RFC 8032: Edwards-Curve Digital Signature Algorithm]
+- https://docs.rs/ed25519-dalek/[ed25519-dalek documentation]
