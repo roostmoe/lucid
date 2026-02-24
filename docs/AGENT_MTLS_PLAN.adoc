@@ -1,0 +1,728 @@
+= Agent mTLS Authentication: Implementation Plan
+:showtitle:
+:toc: left
+:icons: font
+:source-highlighter: rouge
+
+== Overview
+
+This document outlines the implementation plan for agent authentication using
+mutual TLS (mTLS) with Ed25519 keypairs. Agents register once using a
+single-use activation key JWT, receive a signed 24-hour certificate, and use
+that certificate for all future communication with the API.
+
+== Authentication Flow
+
+=== Registration (One-Time)
+
+[source]
+----
+User generates activation key (JWT)
+  → User runs: lucid-agent register --token '<jwt>'
+  → Agent detects API URL via `iss` claim
+  → Agent generates Ed25519 keypair, creates CSR
+  → POST /api/v1/agents/register (Bearer: activation key)
+  → Server validates key, signs CSR, creates DbAgent + DbHost
+  → Agent stores private key, cert, CA cert to /var/lib/lucid/agent/
+----
+
+=== Ongoing Communication
+
+[source]
+----
+Agent → HTTPS with mTLS client cert
+  → MtlsAuthProvider validates cert against CA
+  → Extracts agent UUID from CN
+  → Looks up agent in DB, checks revocation
+  → Returns Caller::Agent { id, name, roles: [Agent] }
+----
+
+=== Certificate Refresh
+
+[source]
+----
+Background task: check expiry every hour
+  → If < 6 hours remaining: proactive refresh
+  → On any 401 response: reactive refresh
+  → POST /api/v1/agents/refresh (mTLS auth)
+  → Server re-signs CSR with same agent UUID
+  → Agent atomically replaces cert on disk
+----
+
+== Design Decisions
+
+[cols="2,3"]
+|===
+|Decision |Choice
+
+|CA infrastructure
+|Deferred — pluggable via `CertificateAuthority` trait
+
+|Agent-host relationship
+|1:1 — each agent creates and owns exactly one host
+
+|Certificate subject
+|Agent UUID as Common Name (CN)
+
+|Certificate storage
+|Full certificates stored in database (audit + revocation)
+
+|Certificate refresh strategy
+|Proactive at ~18h + reactive on 401
+
+|Registration vs refresh
+|Separate endpoints with different auth methods
+
+|Secrets management
+|Trait-based — Vault and GCP KMS as v1 implementations
+
+|Activation keys
+|Single-use — consumed on successful registration
+
+|Public key rotation
+|Not allowed — must re-register if key is lost
+
+|Agent naming
+|Auto-detect system hostname
+
+|Agent permissions
+|Default `Agent` role assigned to all agents
+
+|Revocation
+|Soft delete (`revoked_at`) + hard delete (DELETE endpoint)
+
+|Multi-tenancy
+|Single-tenant for v1
+|===
+
+== Architecture
+
+=== Phase 1: Secrets Management
+
+==== Trait: `api/src/secrets/mod.rs`
+
+[source,rust]
+----
+#[async_trait]
+pub trait SecretsManager: Send + Sync {
+    async fn get_secret(&self, key: &str) -> Result<String>;
+    async fn set_secret(&self, key: &str, value: &str) -> Result<()>;
+}
+----
+
+==== Implementations
+
+**VaultSecretsManager**
+
+Stores secrets in HashiCorp Vault at paths like `secret/lucid/ca-certificate`
+and `secret/lucid/ca-private-key`.
+
+Configuration via environment variables:
+
+[cols="2,3,2"]
+|===
+|Variable |Description |Example
+
+|`LUCID_SECRETS_BACKEND`
+|Secrets backend to use
+|`vault`
+
+|`VAULT_ADDR`
+|Vault server address
+|`https://vault.example.com`
+
+|`VAULT_TOKEN`
+|Vault authentication token
+|`s.AbCdEf123456`
+|===
+
+**GcpKmsSecretsManager**
+
+Stores secrets in Google Cloud KMS with encryption at rest.
+
+[cols="2,3,2"]
+|===
+|Variable |Description |Example
+
+|`LUCID_SECRETS_BACKEND`
+|Secrets backend to use
+|`gcp-kms`
+
+|`GCP_PROJECT_ID`
+|GCP project ID
+|`my-project-123`
+
+|`GCP_KMS_KEY_RING`
+|KMS key ring name
+|`lucid-keyring`
+
+|`GCP_KMS_CRYPTO_KEY`
+|KMS crypto key name
+|`ca-key`
+|===
+
+=== Phase 2: Certificate Authority
+
+==== Trait: `api/src/auth/ca.rs`
+
+[source,rust]
+----
+#[async_trait]
+pub trait CertificateAuthority: Send + Sync {
+    async fn sign_csr(&self, csr_pem: &str, agent_id: Uuid) -> Result<String>;
+    async fn get_ca_cert_pem(&self) -> Result<String>;
+}
+----
+
+==== Implementation: `SecretBackedCa`
+
+Fetches the CA private key from the `SecretsManager` on demand, signs the CSR
+using `rcgen`, sets CN to the agent UUID, and returns a PEM-encoded certificate
+valid for 24 hours.
+
+==== CA Initialisation Tool
+
+[source,bash]
+----
+lucid-api generate-ca \
+  --secrets-backend vault \
+  --vault-addr https://vault.example.com \
+  --vault-token <token>
+----
+
+This command generates a new CA certificate and private key, stores both in
+the configured secrets backend, and prints the CA certificate fingerprint for
+verification. The CA private key is never written to the local filesystem.
+
+==== CA Certificate Distribution
+
+The CA certificate is publicly available at:
+
+[source]
+----
+GET /.well-known/lucid/agent
+----
+
+Response:
+
+[source,json]
+----
+{
+  "server_version": "0.1.0",
+  "cas": [
+    {
+      "cert_pem": "-----BEGIN CERTIFICATE-----\n...",
+      "fingerprint": "sha256:abcd1234...",
+      "issued_at": "2026-02-24T12:00:00Z",
+      "expires_at": "2027-02-24T12:00:00Z"
+    }
+  ]
+}
+----
+
+This endpoint requires no authentication, supports future multi-CA scenarios,
+and follows the well-known URI convention. It will also carry other server
+metadata (e.g. `server_version`) over time.
+
+=== Phase 3: Database Models
+
+==== New: `DbAgent`
+
+[source,rust]
+----
+pub struct DbAgent {
+    pub id: Uuid,
+    pub name: String,                        // hostname
+    pub host_id: Uuid,                       // FK to DbHost (1:1)
+    pub public_key_pem: String,              // Ed25519 public key
+    pub certificate_pem: String,             // current signed cert
+    pub cert_issued_at: DateTime<Utc>,
+    pub cert_expires_at: DateTime<Utc>,      // 24h after issued_at
+    pub last_seen_at: Option<DateTime<Utc>>, // last successful auth
+    pub revoked_at: Option<DateTime<Utc>>,   // set on soft delete
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+----
+
+Indexes: primary `id`, unique `host_id`, index `cert_expires_at`,
+index `public_key_pem`, index `revoked_at`.
+
+==== Updated: `DbActivationKey`
+
+Add field for single-use enforcement:
+
+[source,rust]
+----
+pub used_by_agent_id: Option<Uuid>,
+----
+
+==== Updated: `DbHost`
+
+Add field for 1:1 agent relationship:
+
+[source,rust]
+----
+pub agent_id: Uuid,
+----
+
+==== New Trait: `AgentStore`
+
+[source,rust]
+----
+#[async_trait]
+pub trait AgentStore: Send + Sync {
+    async fn create(&self, agent: DbAgent) -> Result<DbAgent>;
+    async fn get(&self, id: Uuid) -> Result<Option<DbAgent>>;
+    async fn update(&self, id: Uuid, agent: DbAgent) -> Result<DbAgent>;
+    async fn get_by_cert_fingerprint(&self, fp: &str) -> Result<Option<DbAgent>>;
+    async fn list_expired_certs(&self) -> Result<Vec<DbAgent>>;
+    async fn soft_delete(&self, id: Uuid) -> Result<()>;
+    async fn hard_delete(&self, id: Uuid) -> Result<()>;
+}
+----
+
+==== Updated Trait: `ActivationKeyStore`
+
+[source,rust]
+----
+async fn mark_as_used(&self, key_id: Uuid, agent_id: Uuid) -> Result<()>;
+async fn is_used(&self, key_id: Uuid) -> Result<bool>;
+----
+
+=== Phase 4: Registration Endpoint
+
+==== `POST /api/v1/agents/register`
+
+[source]
+----
+Authorization: Bearer <activation-key-jwt>
+Content-Type: application/json
+----
+
+Request:
+
+[source,json]
+----
+{
+  "csr_pem": "-----BEGIN CERTIFICATE REQUEST-----\n..."
+}
+----
+
+Response `200 OK`:
+
+[source,json]
+----
+{
+  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
+  "certificate_pem": "-----BEGIN CERTIFICATE-----\n...",
+  "ca_certificate_pem": "-----BEGIN CERTIFICATE-----\n...",
+  "expires_at": "2026-02-25T12:34:56Z",
+  "api_base_url": "https://lucid.example.com"
+}
+----
+
+Error responses:
+
+- `401 Unauthorized` — invalid or expired activation key
+- `409 Conflict` — activation key already used
+- `400 Bad Request` — invalid CSR
+
+==== Handler Logic
+
+1. Validate activation key JWT using existing JWT infrastructure
+2. Check `ActivationKeyStore::is_used(key_id)` — return 409 if true
+3. Extract Ed25519 public key from CSR
+4. Generate new agent UUID
+5. Sign CSR via `CertificateAuthority` — CN is set to agent UUID
+6. Create `DbAgent` with certificate
+7. Create `DbHost` linked to agent (initial minimal state)
+8. Call `ActivationKeyStore::mark_as_used(key_id, agent_id)`
+9. Return response
+
+NOTE: If the database write fails after marking the key as used, the
+activation key is consumed and the user must generate a new one. This is
+preferable to the complexity of a two-phase commit.
+
+==== Auth Provider: `ActivationKeyAuthProvider`
+
+Implements `AuthProvider` for the registration endpoint only. Extracts the
+Bearer token, validates the activation key JWT, and returns a
+`Caller::System` to allow the handler to proceed.
+
+=== Phase 5: Agent CLI — Registration
+
+==== Command
+
+[source,bash]
+----
+lucid-agent register --token '<activation-key-jwt>'
+----
+
+==== Flow
+
+1. Decode JWT (no local signature verification needed), extract `iss` as API URL
+2. Check `/var/lib/lucid/agent/auth.key` — error if exists ("already registered")
+3. Generate Ed25519 keypair with `ed25519-dalek`
+4. Detect hostname via `hostname::get()`
+5. Create CSR with `rcgen`, CN = hostname
+6. `POST {iss}/api/v1/agents/register` with JWT in Authorization header
+7. Atomically write private key to `auth.key` (mode 0600)
+8. Atomically write certificate to `auth.crt` (mode 0644)
+9. Atomically write CA cert to `ca.crt` (mode 0644)
+10. Print: `registered as agent <uuid>, cert expires <timestamp>`
+
+==== Unregister Command
+
+[source,bash]
+----
+lucid-agent unregister
+----
+
+Deletes local credentials (`auth.key`, `auth.crt`, `ca.crt`). Does NOT
+delete the agent record from the server — an admin must revoke it via the API.
+
+=== Phase 6: mTLS Authentication Provider
+
+==== Axum Setup
+
+Configure `axum-server` with `rustls` to:
+
+- Present server TLS certificate
+- Request and validate client certificates
+- Expose client certificate via request extension
+
+==== Provider: `api/src/auth/mtls_provider.rs`
+
+[source,rust]
+----
+pub struct MtlsAuthProvider {
+    agent_store: Arc<dyn AgentStore>,
+    ca: Arc<dyn CertificateAuthority>,
+}
+
+impl AuthProvider for MtlsAuthProvider {
+    fn name(&self) -> &str { "mtls" }
+
+    async fn authenticate(&self, req: &Request) -> Result<Option<Caller>> {
+        // 1. Extract client cert from request extension
+        // 2. Verify cert signature against CA public key
+        // 3. Check cert validity period (with 5-minute clock skew grace)
+        // 4. Extract agent UUID from CN
+        // 5. Look up agent in DB, return None if not found
+        // 6. Check revoked_at — return None if revoked
+        // 7. Verify cert matches agent.certificate_pem
+        // 8. Update agent.last_seen_at
+        // 9. Return Caller::Agent { id, name, roles: vec![Role::Agent] }
+    }
+}
+----
+
+==== Agent Role Permissions
+
+The `Agent` role provides:
+
+- `telemetry:submit` — POST telemetry data
+- `agent:refresh` — refresh own certificate
+- `host:update` — update own host record
+- `agent:read` — read own agent record
+
+=== Phase 7: Certificate Refresh Endpoint
+
+==== `POST /api/v1/agents/refresh`
+
+[source]
+----
+[mTLS client certificate authentication]
+Content-Type: application/json
+----
+
+Request:
+
+[source,json]
+----
+{
+  "csr_pem": "-----BEGIN CERTIFICATE REQUEST-----\n..."
+}
+----
+
+Response `200 OK`:
+
+[source,json]
+----
+{
+  "certificate_pem": "-----BEGIN CERTIFICATE-----\n...",
+  "ca_certificate_pem": "-----BEGIN CERTIFICATE-----\n...",
+  "expires_at": "2026-02-25T12:34:56Z"
+}
+----
+
+Error responses:
+
+- `400 Bad Request` — public key mismatch (message: "public key rotation not
+  supported, please re-register")
+- `401 Unauthorized` — invalid or expired client certificate
+- `403 Forbidden` — agent revoked
+
+==== Handler Logic
+
+1. `MtlsAuthProvider` provides `Caller::Agent { id }`
+2. Fetch agent record from DB
+3. Extract public key from CSR
+4. Verify CSR public key matches `agent.public_key_pem` — return 400 if not
+5. Sign new certificate with same agent UUID via `CertificateAuthority`
+6. Update `DbAgent` with new cert and timestamps
+7. Return new cert and CA cert
+
+NOTE: Public key rotation is intentionally not supported. If an agent loses
+its private key, the operator should revoke it and re-register using a new
+activation key.
+
+=== Phase 8: Agent Certificate Refresh Logic
+
+==== Background Task
+
+[source,rust]
+----
+async fn refresh_task(config: AgentConfig) {
+    loop {
+        let cert = load_certificate(&config.cert_path)?;
+        let time_until_expiry = cert.expires_at - Utc::now();
+
+        if time_until_expiry < Duration::hours(6) {
+            match refresh_certificate(&config).await {
+                Ok(_) => info!("certificate refreshed successfully"),
+                Err(e) => warn!("proactive refresh failed: {}", e),
+            }
+        }
+
+        tokio::time::sleep(Duration::hours(1)).await;
+    }
+}
+----
+
+==== Reactive Refresh on 401
+
+[source,rust]
+----
+async fn api_request_with_refresh(/* ... */) -> Result<Response> {
+    let response = make_request().await?;
+
+    if response.status() == StatusCode::UNAUTHORIZED {
+        warn!("received 401, attempting reactive cert refresh");
+        refresh_certificate(&config).await?;
+        return make_request().await;
+    }
+
+    Ok(response)
+}
+----
+
+==== Timing
+
+- Certificate valid for 24 hours
+- Proactive refresh triggered when < 6 hours remain
+- Hourly check loop
+- 5-minute grace period on server for clock skew
+
+=== Phase 9: Agent Revocation
+
+==== Soft Delete (Revoke)
+
+[source]
+----
+POST /api/v1/agents/:id/revoke
+Authorization: Bearer <admin-session>
+----
+
+Sets `agent.revoked_at = now()`. `MtlsAuthProvider` rejects revoked agents
+on every request. Can be reversed by an admin clearing `revoked_at`.
+
+==== Hard Delete (Remove)
+
+[source]
+----
+DELETE /api/v1/agents/:id
+Authorization: Bearer <admin-session>
+----
+
+Permanently deletes the agent record (and unlinks or removes the associated
+host). Cannot be reversed.
+
+==== Recommended Workflow
+
+1. Soft delete first to immediately disable access
+2. Confirm the correct agent was targeted
+3. Hard delete later once confirmed
+
+== Dependencies
+
+All dependencies are declared in the root `Cargo.toml` per project guidelines.
+
+=== API
+
+[source,toml]
+----
+# Secrets management
+vaultrs = "0.7"
+
+# Certificate handling
+rcgen = "0.13"
+x509-parser = "0.16"
+rustls-pemfile = "2.0"
+
+# TLS
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+----
+
+=== Agent
+
+[source,toml]
+----
+# HTTP client
+reqwest = { version = "0.12", features = ["rustls-tls", "json"] }
+
+# Certificate handling
+rcgen = "0.13"
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
+rustls-pemfile = "2.0"
+
+# Utilities
+hostname = "0.4"
+tokio = { version = "1", features = ["full"] }
+----
+
+== File Locations
+
+=== Agent
+
+[cols="2,3"]
+|===
+|Path |Description
+
+|`/var/lib/lucid/agent/auth.key`
+|Ed25519 private key (mode 0600)
+
+|`/var/lib/lucid/agent/auth.crt`
+|Agent certificate signed by Lucid CA (mode 0644)
+
+|`/var/lib/lucid/agent/ca.crt`
+|Lucid CA certificate for server verification (mode 0644)
+|===
+
+== Security Considerations
+
+=== CA Key Compromise
+
+If the CA private key is compromised, an attacker can forge valid agent
+certificates. Mitigations:
+
+- Store CA key in secrets manager (never on local filesystem)
+- Audit all CA key access via secrets manager logs
+- Rotate CA key if compromise is suspected (see Future Enhancements)
+- Monitor certificate issuance for anomalies
+
+=== Activation Key Abuse
+
+Leaked activation keys allow unauthorised agent registration. Mitigations:
+
+- Single-use keys prevent reuse after compromise
+- Short expiration times (hours to days)
+- Audit log of all registrations
+- Rate limiting on the registration endpoint
+
+=== Agent Identity Verification
+
+For v1, the agent-provided hostname is trusted without verification. Future
+enhancements should include signed challenges during registration or hardware
+attestation.
+
+=== Certificate Revocation
+
+Short certificate lifetimes (24 hours) limit exposure if a certificate is
+stolen. The soft-delete `revoked_at` mechanism provides immediate revocation.
+CRL and OCSP are deferred to a future iteration.
+
+== Testing Strategy
+
+=== Unit Tests
+
+- Secrets manager: mock backend, key retrieval, error handling
+- CA: CSR parsing, certificate signing, expiry calculation, PEM encoding
+- JWT: activation key parsing, signature verification, expiry
+- Public key operations: key generation, CSR creation, key extraction
+
+=== Integration Tests
+
+- Full registration flow with mock CA
+- Single-use activation key enforcement
+- Concurrent registration attempts
+- mTLS authentication with valid, expired, and revoked certs
+- Certificate refresh with public key mismatch
+- Agent revocation (soft + hard)
+
+=== Manual Testing Checklist
+
+**CA setup:**
+
+- [ ] Generate CA cert/key pair and store in Vault
+- [ ] Retrieve CA cert from `/.well-known/lucid/agent`
+- [ ] Verify CA cert fingerprint
+
+**Registration:**
+
+- [ ] Generate activation key via API
+- [ ] Run `lucid-agent register --token <jwt>`
+- [ ] Verify credentials created in `/var/lib/lucid/agent/`
+- [ ] Verify agent and host records created in DB
+- [ ] Attempt registration again with same token (expect 409)
+
+**mTLS authentication:**
+
+- [ ] Make authenticated API request from registered agent
+- [ ] Verify `Caller::Agent` in logs
+- [ ] Verify `last_seen_at` updated
+- [ ] Attempt request with expired cert (expect 401)
+- [ ] Revoke agent, attempt request (expect 401)
+
+**Certificate refresh:**
+
+- [ ] Trigger proactive refresh (advance clock or reduce cert lifetime)
+- [ ] Trigger reactive refresh by serving 401
+- [ ] Verify new cert written atomically to disk
+
+**Revocation:**
+
+- [ ] Soft delete agent, verify auth fails immediately
+- [ ] Clear `revoked_at`, verify auth succeeds
+- [ ] Hard delete agent, verify record removed
+
+== Implementation Order
+
+[cols="1,3,2"]
+|===
+|# |Phase |Depends On
+
+|1 |Secrets management infrastructure |—
+|2 |CA tooling + `generate-ca` command |1
+|3 |Database models (DbAgent, updated DbActivationKey, DbHost) |—
+|4 |Registration endpoint |2, 3
+|5 |Agent CLI registration command |2, 4
+|6 |mTLS auth provider + Axum TLS setup |3, 4
+|7 |Certificate refresh endpoint |3, 6
+|8 |Agent background refresh logic |5, 7
+|9 |Agent revocation endpoints |3, 6
+|===
+
+== Future Enhancements
+
+The following are explicitly deferred from v1:
+
+- **CA rotation** — multiple simultaneous CAs, graceful agent migration
+- **CRL / OCSP** — certificate revocation lists, online status checking
+- **Public key rotation** — allow keypair change without full re-registration
+- **Hardware attestation** — TPM, AWS Nitro, GCP Confidential VMs
+- **Signed registration challenges** — verify agent runs on claimed host
+- **Multi-tenancy** — per-tenant CAs and agent isolation
+- **GCP KMS secrets manager** — planned for v1 but may slip if Vault covers needs
