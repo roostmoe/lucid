@@ -15,6 +15,227 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Retrieve the server's public JSON Web Key Set.",
+        "description": "Returns the Ed25519 public key(s) used by this server to sign tokens.\nExternal services can use this endpoint to verify JWTs without needing\na shared secret.\n\nThe key is represented as an OKP (Octet Key Pair) JWK per RFC 8037.\n\n# Example\n\n```bash\ncurl http://localhost:4000/.well-known/jwks.json\n```\n\n```json\n{\n  \"keys\": [\n    {\n      \"kty\": \"OKP\",\n      \"crv\": \"Ed25519\",\n      \"x\": \"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\",\n      \"kid\": \"11qYAYKxCrfV\",\n      \"use\": \"sig\",\n      \"alg\": \"EdDSA\"\n    }\n  ]\n}\n```",
+        "operationId": "get_jwks",
+        "responses": {
+          "200": {
+            "description": "JSON Web Key Set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JwkSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/activation-keys": {
+      "get": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "list_activation_keys",
+        "responses": {
+          "200": {
+            "description": "List of activation keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedList_ActivationKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "create_activation_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActivationKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Activation key created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActivationKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/activation-keys/{id}": {
+      "get": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "get_activation_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activation key details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "delete_activation_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Activation key deleted"
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -239,6 +460,35 @@
   },
   "components": {
     "schemas": {
+      "ActivationKey": {
+        "type": "object",
+        "description": "An activation key used to bootstrap host agent configuration.",
+        "required": [
+          "id",
+          "key_id",
+          "description",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the key was created"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description"
+          },
+          "id": {
+            "type": "string",
+            "description": "Internal database ID"
+          },
+          "key_id": {
+            "type": "string",
+            "description": "User-provided key identifier"
+          }
+        }
+      },
       "ApiErrorResponse": {
         "type": "object",
         "description": "An error response for an API endpoint. This is used to return errors to the\nclient in a consistent format.",
@@ -338,6 +588,42 @@
         ],
         "description": "Response for the login endpoint."
       },
+      "CreateActivationKeyRequest": {
+        "type": "object",
+        "description": "Request body for creating an activation key.",
+        "required": [
+          "key_id",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Human-readable description"
+          },
+          "key_id": {
+            "type": "string",
+            "description": "User-provided identifier for this key"
+          }
+        }
+      },
+      "CreateActivationKeyResponse": {
+        "type": "object",
+        "description": "Response for activation key creation - includes the JWT token.",
+        "required": [
+          "key",
+          "token"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ActivationKey",
+            "description": "The created activation key metadata"
+          },
+          "token": {
+            "type": "string",
+            "description": "The JWT token - only returned on creation, store it securely!"
+          }
+        }
+      },
       "Host": {
         "type": "object",
         "required": [
@@ -398,6 +684,59 @@
           }
         }
       },
+      "Jwk": {
+        "type": "object",
+        "description": "A single JSON Web Key representing an OKP (Octet Key Pair) Ed25519 public key.",
+        "required": [
+          "kty",
+          "crv",
+          "x",
+          "kid",
+          "use",
+          "alg"
+        ],
+        "properties": {
+          "alg": {
+            "type": "string",
+            "description": "Algorithms this key supports — `\"EdDSA\"` for Ed25519."
+          },
+          "crv": {
+            "type": "string",
+            "description": "Curve — always `\"Ed25519\"`."
+          },
+          "kid": {
+            "type": "string",
+            "description": "Key ID — a base64url-encoded prefix of the public key bytes,\nused to identify which key was used to sign a token."
+          },
+          "kty": {
+            "type": "string",
+            "description": "Key type — always `\"OKP\"` for Ed25519 keys (RFC 8037)."
+          },
+          "use": {
+            "type": "string",
+            "description": "Intended use of the key. `\"sig\"` indicates this key is for signing."
+          },
+          "x": {
+            "type": "string",
+            "description": "Base64url-encoded public key bytes (32 bytes for Ed25519)."
+          }
+        }
+      },
+      "JwkSet": {
+        "type": "object",
+        "description": "The JSON Web Key Set response, containing one or more public keys.",
+        "required": [
+          "keys"
+        ],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Jwk"
+            }
+          }
+        }
+      },
       "NetworkInterface": {
         "type": "object",
         "required": [
@@ -444,6 +783,63 @@
           "Down",
           "Unknown"
         ]
+      },
+      "PaginatedList_ActivationKey": {
+        "type": "object",
+        "description": "Parameters for paginating through a list of records. This is used by the\nvarious list endpoints to allow clients to paginate through large sets of\nrecords.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "An activation key used to bootstrap host agent configuration.",
+              "required": [
+                "id",
+                "key_id",
+                "description",
+                "created_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the key was created"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Human-readable description"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Internal database ID"
+                },
+                "key_id": {
+                  "type": "string",
+                  "description": "User-provided key identifier"
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The maximum number of results to return.",
+            "minimum": 0
+          },
+          "next_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The next page token, if any. This is acquired by requesting a paginated\nset of records and looking at the `next_token` or `prev_token` field."
+          }
+        }
       },
       "PaginatedList_Host": {
         "type": "object",

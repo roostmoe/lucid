@@ -78,6 +78,13 @@ pub enum Permission {
     ServiceAccountsWrite,
     /// Delete service accounts
     ServiceAccountsDelete,
+
+    /// View activation keys
+    ActivationKeysRead,
+    /// Create activation keys
+    ActivationKeysWrite,
+    /// Delete activation keys
+    ActivationKeysDelete,
 }
 
 impl Permission {
@@ -92,6 +99,9 @@ impl Permission {
             Permission::ServiceAccountsRead => "service_accounts:read",
             Permission::ServiceAccountsWrite => "service_accounts:write",
             Permission::ServiceAccountsDelete => "service_accounts:delete",
+            Permission::ActivationKeysRead => "activation_keys:read",
+            Permission::ActivationKeysWrite => "activation_keys:write",
+            Permission::ActivationKeysDelete => "activation_keys:delete",
         }
     }
 }
@@ -130,6 +140,9 @@ impl Role {
     pub fn permissions(&self) -> &'static [Permission] {
         match self {
             Role::Admin => &[
+                Permission::ActivationKeysRead,
+                Permission::ActivationKeysWrite,
+                Permission::ActivationKeysDelete,
                 Permission::HostsRead,
                 Permission::HostsWrite,
                 Permission::HostsDelete,
@@ -141,6 +154,7 @@ impl Role {
                 Permission::ServiceAccountsDelete,
             ],
             Role::Viewer => &[
+                Permission::ActivationKeysRead,
                 Permission::HostsRead,
                 Permission::UsersRead,
                 Permission::ServiceAccountsRead,

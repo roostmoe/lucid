@@ -4,7 +4,7 @@ use bson::serde_helpers::datetime::FromChrono04DateTime;
 use chrono::{DateTime, Utc};
 use lucid_common::{
     caller::{Caller, Role},
-    views::{Host, User},
+    views::{ActivationKey, Host, User},
 };
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
@@ -152,4 +152,41 @@ pub struct OperatingSystem {
 
     /// The version of the operating system (e.g., "20.04", "10", "11.2")
     pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DbActivationKey {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+
+    /// The unique identifier for this activation key (e.g., a random string or ULID)
+    pub key_id: String,
+
+    /// The description of this activation key (e.g., "Key for activating new hosts")
+    pub description: String,
+}
+
+impl DbActivationKey {
+    /// Get the creation time of this activation key based on the ObjectId's timestamp.
+    pub fn created_at(&self) -> chrono::DateTime<Utc> {
+        if let Some(id) = self.id {
+            id.timestamp().to_system_time().into()
+        } else {
+            Utc::now()
+        }
+    }
+}
+
+impl From<DbActivationKey> for ActivationKey {
+    fn from(value: DbActivationKey) -> Self {
+        Self {
+            id: value
+                .id
+                .map(|oid| oid.to_string())
+                .unwrap_or_else(|| "unknown".into()),
+            key_id: value.key_id.clone(),
+            description: value.description.clone(),
+            created_at: value.created_at(),
+        }
+    }
 }

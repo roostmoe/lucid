@@ -33,5 +33,6 @@ async-trait.workspace = true
 rand.workspace = true
 base64.workspace = true
 ed25519-dalek.workspace = true
+jsonwebtoken.workspace = true
 pem-rfc7468.workspace = true
 pkcs8.workspace = true

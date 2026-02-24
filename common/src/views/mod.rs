@@ -5,6 +5,9 @@ use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+mod activation_key;
+pub use activation_key::*;
+
 mod auth;
 pub use auth::*;
 

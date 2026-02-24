@@ -20,8 +20,11 @@ use mongodb::{
 use tracing::{info, instrument};
 
 use crate::{
-    models::{DbHost, DbSession, DbUser},
-    storage::{HostFilter, HostStore, SessionStore, Storage, StoreError, UserFilter, UserStore},
+    models::{DbActivationKey, DbHost, DbSession, DbUser},
+    storage::{
+        ActivationKeyFilter, ActivationKeyStore, HostFilter, HostStore, SessionStore, Storage,
+        StoreError, UserFilter, UserStore,
+    },
 };
 
 #[derive(Debug)]
@@ -110,6 +113,17 @@ impl MongoDBStorage {
             )
             .await?;
 
+        // Activation keys collection indexes
+        self.get_db()
+            .collection::<()>(MONGODB_COLLECTION_ACTIVATION_KEYS)
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"key_id": 1})
+                    .options(IndexOptions::builder().unique(true).build())
+                    .build(),
+            )
+            .await?;
+
         Ok(())
     }
 }
@@ -130,12 +144,15 @@ impl Storage for MongoDBStorage {
 pub const MONGODB_COLLECTION_USERS: &str = "users";
 pub const MONGODB_COLLECTION_SESSIONS: &str = "console_sessions";
 pub const MONGODB_COLLECTION_INVENTORY_HOSTS: &str = "inventory_hosts";
+pub const MONGODB_COLLECTION_ACTIVATION_KEYS: &str = "activation_keys";
 
 #[async_trait]
 impl UserStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
     async fn get(&self, caller: Caller, id: String) -> Result<Option<DbUser>, StoreError> {
-        caller.require(Permission::UsersRead).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::UsersRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let users = UserStore::list(
             self,
@@ -161,7 +178,9 @@ impl UserStore for MongoDBStorage {
         filter: UserFilter,
         pagination: PaginationParams,
     ) -> Result<Vec<DbUser>, StoreError> {
-        caller.require(Permission::UsersRead).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::UsersRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let collection = self.get_db().collection::<DbUser>(MONGODB_COLLECTION_USERS);
 
@@ -194,8 +213,14 @@ impl UserStore for MongoDBStorage {
             .map_err(StoreError::MongoDB)
     }
 
-    async fn create_local(&self, caller: Caller, user: CreateLocalUserParams) -> Result<DbUser, StoreError> {
-        caller.require(Permission::UsersWrite).map_err(|_| StoreError::PermissionDenied)?;
+    async fn create_local(
+        &self,
+        caller: Caller,
+        user: CreateLocalUserParams,
+    ) -> Result<DbUser, StoreError> {
+        caller
+            .require(Permission::UsersWrite)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let collection = self.get_db().collection::<DbUser>(MONGODB_COLLECTION_USERS);
 
@@ -216,8 +241,15 @@ impl UserStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn auth_local(&self, caller: Caller, email: String, password: String) -> Result<Caller, StoreError> {
-        caller.require(Permission::UsersRead).map_err(|_| StoreError::PermissionDenied)?;
+    async fn auth_local(
+        &self,
+        caller: Caller,
+        email: String,
+        password: String,
+    ) -> Result<Caller, StoreError> {
+        caller
+            .require(Permission::UsersRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let users = UserStore::list(
             self,
@@ -382,7 +414,9 @@ impl SessionStore for MongoDBStorage {
 impl HostStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
     async fn get(&self, caller: Caller, id: String) -> Result<Option<DbHost>, StoreError> {
-        caller.require(Permission::HostsRead).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::HostsRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let hosts = HostStore::list(
             self,
@@ -408,7 +442,9 @@ impl HostStore for MongoDBStorage {
         filter: HostFilter,
         pagination: PaginationParams,
     ) -> Result<Vec<DbHost>, StoreError> {
-        caller.require(Permission::HostsRead).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::HostsRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let collection = self
             .get_db()
@@ -454,7 +490,9 @@ impl HostStore for MongoDBStorage {
 
     #[instrument(skip(self), err(Debug))]
     async fn create(&self, caller: Caller, host: DbHost) -> Result<DbHost, StoreError> {
-        caller.require(Permission::HostsWrite).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::HostsWrite)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let collection = self
             .get_db()
@@ -470,7 +508,9 @@ impl HostStore for MongoDBStorage {
 
     #[instrument(skip(self), err(Debug))]
     async fn update(&self, caller: Caller, host: DbHost) -> Result<DbHost, StoreError> {
-        caller.require(Permission::HostsWrite).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::HostsWrite)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let id = host.id.ok_or_else(|| StoreError::NotFound)?;
 
@@ -504,13 +544,126 @@ impl HostStore for MongoDBStorage {
 
     #[instrument(skip(self), err(Debug))]
     async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError> {
-        caller.require(Permission::HostsDelete).map_err(|_| StoreError::PermissionDenied)?;
+        caller
+            .require(Permission::HostsDelete)
+            .map_err(|_| StoreError::PermissionDenied)?;
 
         let object_id = ObjectId::from_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
 
         let collection = self
             .get_db()
             .collection::<DbHost>(MONGODB_COLLECTION_INVENTORY_HOSTS);
+
+        collection.delete_one(doc! {"_id": object_id}).await?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ActivationKeyStore for MongoDBStorage {
+    #[instrument(skip(self), err(Debug))]
+    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbActivationKey>, StoreError> {
+        caller
+            .require(Permission::ActivationKeysRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let keys = ActivationKeyStore::list(
+            self,
+            caller,
+            ActivationKeyFilter {
+                id: Some(vec![id]),
+                key_id: None,
+            },
+            PaginationParams {
+                limit: Some(1),
+                page: Some(0),
+            },
+        )
+        .await?;
+
+        Ok(keys.first().cloned())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn list(
+        &self,
+        caller: Caller,
+        filter: ActivationKeyFilter,
+        pagination: PaginationParams,
+    ) -> Result<Vec<DbActivationKey>, StoreError> {
+        caller
+            .require(Permission::ActivationKeysRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let collection = self
+            .get_db()
+            .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
+
+        let find_options = FindOptions::builder().limit(pagination.limit);
+
+        let mut filter_doc = doc! {};
+        if let Some(ids) = filter.id {
+            let object_ids: Vec<ObjectId> = ids
+                .into_iter()
+                .filter_map(|id| ObjectId::from_str(&id).ok())
+                .collect();
+
+            filter_doc.insert("_id", doc! { "$in": object_ids });
+        }
+        if let Some(key_ids) = filter.key_id {
+            filter_doc.insert("key_id", doc! { "$in": &key_ids });
+        }
+
+        info!(
+            "Finding activation keys with {filter}",
+            filter = filter_doc.to_string()
+        );
+
+        let cursor = collection
+            .find(filter_doc)
+            .with_options(find_options.build())
+            .await?;
+
+        Ok(cursor.try_collect().await?)
+    }
+
+    #[instrument(skip(self, key), err(Debug))]
+    async fn create(
+        &self,
+        caller: Caller,
+        mut key: DbActivationKey,
+    ) -> Result<DbActivationKey, StoreError> {
+        caller
+            .require(Permission::ActivationKeysWrite)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let collection = self
+            .get_db()
+            .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
+
+        let result = collection.insert_one(&key).await?;
+        key.id = Some(
+            result
+                .inserted_id
+                .as_object_id()
+                .ok_or_else(|| StoreError::InternalAnyhow(anyhow!("Failed to get ObjectId")))?,
+        );
+
+        Ok(key)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError> {
+        caller
+            .require(Permission::ActivationKeysDelete)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let object_id = ObjectId::from_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
+
+        let collection = self
+            .get_db()
+            .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
 
         collection.delete_one(doc! {"_id": object_id}).await?;
 

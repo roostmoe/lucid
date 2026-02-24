@@ -13,6 +13,7 @@ import { Route as ConsoleRouteImport } from './routes/_console'
 import { Route as ConsoleIndexRouteImport } from './routes/_console/index'
 import { Route as authAuthRouteImport } from './routes/(auth)/_auth'
 import { Route as ConsoleHostsIndexRouteImport } from './routes/_console/hosts/index'
+import { Route as ConsoleActivationKeysIndexRouteImport } from './routes/_console/activation-keys/index'
 import { Route as authAuthAuthLoginRouteImport } from './routes/(auth)/_auth/auth.login'
 
 const ConsoleRoute = ConsoleRouteImport.update({
@@ -33,6 +34,12 @@ const ConsoleHostsIndexRoute = ConsoleHostsIndexRouteImport.update({
   path: '/hosts/',
   getParentRoute: () => ConsoleRoute,
 } as any)
+const ConsoleActivationKeysIndexRoute =
+  ConsoleActivationKeysIndexRouteImport.update({
+    id: '/activation-keys/',
+    path: '/activation-keys/',
+    getParentRoute: () => ConsoleRoute,
+  } as any)
 const authAuthAuthLoginRoute = authAuthAuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
@@ -41,11 +48,13 @@ const authAuthAuthLoginRoute = authAuthAuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof ConsoleIndexRoute
+  '/activation-keys/': typeof ConsoleActivationKeysIndexRoute
   '/hosts/': typeof ConsoleHostsIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ConsoleIndexRoute
+  '/activation-keys': typeof ConsoleActivationKeysIndexRoute
   '/hosts': typeof ConsoleHostsIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
 }
@@ -54,19 +63,21 @@ export interface FileRoutesById {
   '/_console': typeof ConsoleRouteWithChildren
   '/(auth)/_auth': typeof authAuthRouteWithChildren
   '/_console/': typeof ConsoleIndexRoute
+  '/_console/activation-keys/': typeof ConsoleActivationKeysIndexRoute
   '/_console/hosts/': typeof ConsoleHostsIndexRoute
   '/(auth)/_auth/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/hosts/' | '/auth/login'
+  fullPaths: '/' | '/activation-keys/' | '/hosts/' | '/auth/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/hosts' | '/auth/login'
+  to: '/' | '/activation-keys' | '/hosts' | '/auth/login'
   id:
     | '__root__'
     | '/_console'
     | '/(auth)/_auth'
     | '/_console/'
+    | '/_console/activation-keys/'
     | '/_console/hosts/'
     | '/(auth)/_auth/auth/login'
   fileRoutesById: FileRoutesById
@@ -106,6 +117,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleHostsIndexRouteImport
       parentRoute: typeof ConsoleRoute
     }
+    '/_console/activation-keys/': {
+      id: '/_console/activation-keys/'
+      path: '/activation-keys'
+      fullPath: '/activation-keys/'
+      preLoaderRoute: typeof ConsoleActivationKeysIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/(auth)/_auth/auth/login': {
       id: '/(auth)/_auth/auth/login'
       path: '/auth/login'
@@ -118,11 +136,13 @@ declare module '@tanstack/react-router' {
 
 interface ConsoleRouteChildren {
   ConsoleIndexRoute: typeof ConsoleIndexRoute
+  ConsoleActivationKeysIndexRoute: typeof ConsoleActivationKeysIndexRoute
   ConsoleHostsIndexRoute: typeof ConsoleHostsIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleIndexRoute: ConsoleIndexRoute,
+  ConsoleActivationKeysIndexRoute: ConsoleActivationKeysIndexRoute,
   ConsoleHostsIndexRoute: ConsoleHostsIndexRoute,
 }
 

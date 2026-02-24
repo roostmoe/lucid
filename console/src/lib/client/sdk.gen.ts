@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthWhoamiData, AuthWhoamiErrors, AuthWhoamiResponses, GetHostData, GetHostErrors, GetHostResponses, ListHostsData, ListHostsErrors, ListHostsResponses } from './types.gen';
+import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthWhoamiData, AuthWhoamiErrors, AuthWhoamiResponses, CreateActivationKeyData, CreateActivationKeyErrors, CreateActivationKeyResponses, DeleteActivationKeyData, DeleteActivationKeyErrors, DeleteActivationKeyResponses, GetActivationKeyData, GetActivationKeyErrors, GetActivationKeyResponses, GetHostData, GetHostErrors, GetHostResponses, GetJwksData, GetJwksErrors, GetJwksResponses, ListActivationKeysData, ListActivationKeysErrors, ListActivationKeysResponses, ListHostsData, ListHostsErrors, ListHostsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -17,6 +17,66 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+/**
+ * Retrieve the server's public JSON Web Key Set.
+ *
+ * Returns the Ed25519 public key(s) used by this server to sign tokens.
+ * External services can use this endpoint to verify JWTs without needing
+ * a shared secret.
+ *
+ * The key is represented as an OKP (Octet Key Pair) JWK per RFC 8037.
+ *
+ * # Example
+ *
+ * ```bash
+ * curl http://localhost:4000/.well-known/jwks.json
+ * ```
+ *
+ * ```json
+ * {
+ * "keys": [
+ * {
+ * "kty": "OKP",
+ * "crv": "Ed25519",
+ * "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+ * "kid": "11qYAYKxCrfV",
+ * "use": "sig",
+ * "alg": "EdDSA"
+ * }
+ * ]
+ * }
+ * ```
+ */
+export const getJwks = <ThrowOnError extends boolean = false>(options?: Options<GetJwksData, ThrowOnError>) => (options?.client ?? client).get<GetJwksResponses, GetJwksErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/.well-known/jwks.json',
+    ...options
+});
+
+export const listActivationKeys = <ThrowOnError extends boolean = false>(options?: Options<ListActivationKeysData, ThrowOnError>) => (options?.client ?? client).get<ListActivationKeysResponses, ListActivationKeysErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/activation-keys',
+    ...options
+});
+
+export const createActivationKey = <ThrowOnError extends boolean = false>(options: Options<CreateActivationKeyData, ThrowOnError>) => (options.client ?? client).post<CreateActivationKeyResponses, CreateActivationKeyErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/activation-keys',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const deleteActivationKey = <ThrowOnError extends boolean = false>(options: Options<DeleteActivationKeyData, ThrowOnError>) => (options.client ?? client).delete<DeleteActivationKeyResponses, DeleteActivationKeyErrors, ThrowOnError>({ url: '/api/v1/activation-keys/{id}', ...options });
+
+export const getActivationKey = <ThrowOnError extends boolean = false>(options: Options<GetActivationKeyData, ThrowOnError>) => (options.client ?? client).get<GetActivationKeyResponses, GetActivationKeyErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/activation-keys/{id}',
+    ...options
+});
 
 /**
  * Authenticate user and create session.

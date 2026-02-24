@@ -1,5 +1,6 @@
 pub mod error;
 pub mod extractor;
+pub mod jwt;
 pub mod manager;
 pub mod provider;
 pub mod providers;

@@ -5,6 +5,28 @@ export type ClientOptions = {
 };
 
 /**
+ * An activation key used to bootstrap host agent configuration.
+ */
+export type ActivationKey = {
+    /**
+     * When the key was created
+     */
+    created_at: string;
+    /**
+     * Human-readable description
+     */
+    description: string;
+    /**
+     * Internal database ID
+     */
+    id: string;
+    /**
+     * User-provided key identifier
+     */
+    key_id: string;
+};
+
+/**
  * An error response for an API endpoint. This is used to return errors to the
  * client in a consistent format.
  */
@@ -59,6 +81,34 @@ export type AuthLoginResponse = {
     token_type: 'Bearer';
 };
 
+/**
+ * Request body for creating an activation key.
+ */
+export type CreateActivationKeyRequest = {
+    /**
+     * Human-readable description
+     */
+    description: string;
+    /**
+     * User-provided identifier for this key
+     */
+    key_id: string;
+};
+
+/**
+ * Response for activation key creation - includes the JWT token.
+ */
+export type CreateActivationKeyResponse = {
+    /**
+     * The created activation key metadata
+     */
+    key: ActivationKey;
+    /**
+     * The JWT token - only returned on creation, store it securely!
+     */
+    token: string;
+};
+
 export type Host = {
     /**
      * The CPU architecture of the host, read from `uname -m`.
@@ -95,6 +145,44 @@ export type Host = {
     updated_at: string;
 };
 
+/**
+ * A single JSON Web Key representing an OKP (Octet Key Pair) Ed25519 public key.
+ */
+export type Jwk = {
+    /**
+     * Algorithms this key supports — `"EdDSA"` for Ed25519.
+     */
+    alg: string;
+    /**
+     * Curve — always `"Ed25519"`.
+     */
+    crv: string;
+    /**
+     * Key ID — a base64url-encoded prefix of the public key bytes,
+     * used to identify which key was used to sign a token.
+     */
+    kid: string;
+    /**
+     * Key type — always `"OKP"` for Ed25519 keys (RFC 8037).
+     */
+    kty: string;
+    /**
+     * Intended use of the key. `"sig"` indicates this key is for signing.
+     */
+    use: string;
+    /**
+     * Base64url-encoded public key bytes (32 bytes for Ed25519).
+     */
+    x: string;
+};
+
+/**
+ * The JSON Web Key Set response, containing one or more public keys.
+ */
+export type JwkSet = {
+    keys: Array<Jwk>;
+};
+
 export type NetworkInterface = {
     /**
      * The unique identifier for the host that this network interface is
@@ -121,6 +209,41 @@ export type NetworkInterface = {
 };
 
 export type NetworkInterfaceState = 'Up' | 'Down' | 'Unknown';
+
+/**
+ * Parameters for paginating through a list of records. This is used by the
+ * various list endpoints to allow clients to paginate through large sets of
+ * records.
+ */
+export type PaginatedListActivationKey = {
+    items: Array<{
+        /**
+         * When the key was created
+         */
+        created_at: string;
+        /**
+         * Human-readable description
+         */
+        description: string;
+        /**
+         * Internal database ID
+         */
+        id: string;
+        /**
+         * User-provided key identifier
+         */
+        key_id: string;
+    }>;
+    /**
+     * The maximum number of results to return.
+     */
+    limit?: number | null;
+    /**
+     * The next page token, if any. This is acquired by requesting a paginated
+     * set of records and looking at the `next_token` or `prev_token` field.
+     */
+    next_token?: string | null;
+};
 
 /**
  * Parameters for paginating through a list of records. This is used by the
@@ -190,6 +313,230 @@ export type User = {
     id: string;
     updated_at: string;
 };
+
+export type GetJwksData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/.well-known/jwks.json';
+};
+
+export type GetJwksErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type GetJwksResponses = {
+    /**
+     * JSON Web Key Set
+     */
+    200: JwkSet;
+};
+
+export type GetJwksResponse = GetJwksResponses[keyof GetJwksResponses];
+
+export type ListActivationKeysData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/activation-keys';
+};
+
+export type ListActivationKeysErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type ListActivationKeysResponses = {
+    /**
+     * List of activation keys
+     */
+    200: PaginatedListActivationKey;
+};
+
+export type ListActivationKeysResponse = ListActivationKeysResponses[keyof ListActivationKeysResponses];
+
+export type CreateActivationKeyData = {
+    body: CreateActivationKeyRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/activation-keys';
+};
+
+export type CreateActivationKeyErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type CreateActivationKeyResponses = {
+    /**
+     * Activation key created
+     */
+    201: CreateActivationKeyResponse;
+};
+
+export type CreateActivationKeyResponse2 = CreateActivationKeyResponses[keyof CreateActivationKeyResponses];
+
+export type DeleteActivationKeyData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/activation-keys/{id}';
+};
+
+export type DeleteActivationKeyErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type DeleteActivationKeyResponses = {
+    /**
+     * Activation key deleted
+     */
+    204: void;
+};
+
+export type DeleteActivationKeyResponse = DeleteActivationKeyResponses[keyof DeleteActivationKeyResponses];
+
+export type GetActivationKeyData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/activation-keys/{id}';
+};
+
+export type GetActivationKeyErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type GetActivationKeyResponses = {
+    /**
+     * Activation key details
+     */
+    200: ActivationKey;
+};
+
+export type GetActivationKeyResponse = GetActivationKeyResponses[keyof GetActivationKeyResponses];
 
 export type AuthLoginData = {
     body: AuthLoginParams;

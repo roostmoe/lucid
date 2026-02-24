@@ -2,6 +2,7 @@ use axum::extract::State;
 
 use crate::{context::ApiContext, error::ApiError};
 
+pub mod activation_keys;
 pub mod auth;
 pub mod hosts;
 pub mod jwks;

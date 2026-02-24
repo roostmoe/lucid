@@ -4,8 +4,144 @@ import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanst
 import type { AxiosError } from 'axios';
 
 import { client } from '../client.gen';
-import { authLogin, authLogout, authWhoami, getHost, listHosts, type Options } from '../sdk.gen';
-import type { AuthLoginData, AuthLoginResponse2, AuthLogoutData, AuthWhoamiData, AuthWhoamiResponse, GetHostData, GetHostResponse, ListHostsData, ListHostsResponse } from '../types.gen';
+import { authLogin, authLogout, authWhoami, createActivationKey, deleteActivationKey, getActivationKey, getHost, getJwks, listActivationKeys, listHosts, type Options } from '../sdk.gen';
+import type { AuthLoginData, AuthLoginResponse2, AuthLogoutData, AuthWhoamiData, AuthWhoamiResponse, CreateActivationKeyData, CreateActivationKeyResponse2, DeleteActivationKeyData, DeleteActivationKeyResponse, GetActivationKeyData, GetActivationKeyResponse, GetHostData, GetHostResponse, GetJwksData, GetJwksResponse, ListActivationKeysData, ListActivationKeysResponse, ListHostsData, ListHostsResponse } from '../types.gen';
+
+export type QueryKey<TOptions extends Options> = [
+    Pick<TOptions, 'baseURL' | 'body' | 'headers' | 'path' | 'query'> & {
+        _id: string;
+        _infinite?: boolean;
+        tags?: ReadonlyArray<string>;
+    }
+];
+
+const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
+    QueryKey<TOptions>[0]
+] => {
+    const params: QueryKey<TOptions>[0] = { _id: id, baseURL: options?.baseURL || (options?.client ?? client).getConfig().baseURL } as QueryKey<TOptions>[0];
+    if (infinite) {
+        params._infinite = infinite;
+    }
+    if (tags) {
+        params.tags = tags;
+    }
+    if (options?.body) {
+        params.body = options.body;
+    }
+    if (options?.headers) {
+        params.headers = options.headers;
+    }
+    if (options?.path) {
+        params.path = options.path;
+    }
+    if (options?.query) {
+        params.query = options.query;
+    }
+    return [params];
+};
+
+export const getJwksQueryKey = (options?: Options<GetJwksData>) => createQueryKey('getJwks', options);
+
+/**
+ * Retrieve the server's public JSON Web Key Set.
+ *
+ * Returns the Ed25519 public key(s) used by this server to sign tokens.
+ * External services can use this endpoint to verify JWTs without needing
+ * a shared secret.
+ *
+ * The key is represented as an OKP (Octet Key Pair) JWK per RFC 8037.
+ *
+ * # Example
+ *
+ * ```bash
+ * curl http://localhost:4000/.well-known/jwks.json
+ * ```
+ *
+ * ```json
+ * {
+ * "keys": [
+ * {
+ * "kty": "OKP",
+ * "crv": "Ed25519",
+ * "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+ * "kid": "11qYAYKxCrfV",
+ * "use": "sig",
+ * "alg": "EdDSA"
+ * }
+ * ]
+ * }
+ * ```
+ */
+export const getJwksOptions = (options?: Options<GetJwksData>) => queryOptions<GetJwksResponse, AxiosError<DefaultError>, GetJwksResponse, ReturnType<typeof getJwksQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getJwks({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getJwksQueryKey(options)
+});
+
+export const listActivationKeysQueryKey = (options?: Options<ListActivationKeysData>) => createQueryKey('listActivationKeys', options);
+
+export const listActivationKeysOptions = (options?: Options<ListActivationKeysData>) => queryOptions<ListActivationKeysResponse, AxiosError<DefaultError>, ListActivationKeysResponse, ReturnType<typeof listActivationKeysQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listActivationKeys({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listActivationKeysQueryKey(options)
+});
+
+export const createActivationKeyMutation = (options?: Partial<Options<CreateActivationKeyData>>): UseMutationOptions<CreateActivationKeyResponse2, AxiosError<DefaultError>, Options<CreateActivationKeyData>> => {
+    const mutationOptions: UseMutationOptions<CreateActivationKeyResponse2, AxiosError<DefaultError>, Options<CreateActivationKeyData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await createActivationKey({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const deleteActivationKeyMutation = (options?: Partial<Options<DeleteActivationKeyData>>): UseMutationOptions<DeleteActivationKeyResponse, AxiosError<DefaultError>, Options<DeleteActivationKeyData>> => {
+    const mutationOptions: UseMutationOptions<DeleteActivationKeyResponse, AxiosError<DefaultError>, Options<DeleteActivationKeyData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteActivationKey({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getActivationKeyQueryKey = (options: Options<GetActivationKeyData>) => createQueryKey('getActivationKey', options);
+
+export const getActivationKeyOptions = (options: Options<GetActivationKeyData>) => queryOptions<GetActivationKeyResponse, AxiosError<DefaultError>, GetActivationKeyResponse, ReturnType<typeof getActivationKeyQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getActivationKey({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getActivationKeyQueryKey(options)
+});
 
 /**
  * Authenticate user and create session.
@@ -105,39 +241,6 @@ export const authLogoutMutation = (options?: Partial<Options<AuthLogoutData>>): 
         }
     };
     return mutationOptions;
-};
-
-export type QueryKey<TOptions extends Options> = [
-    Pick<TOptions, 'baseURL' | 'body' | 'headers' | 'path' | 'query'> & {
-        _id: string;
-        _infinite?: boolean;
-        tags?: ReadonlyArray<string>;
-    }
-];
-
-const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
-    QueryKey<TOptions>[0]
-] => {
-    const params: QueryKey<TOptions>[0] = { _id: id, baseURL: options?.baseURL || (options?.client ?? client).getConfig().baseURL } as QueryKey<TOptions>[0];
-    if (infinite) {
-        params._infinite = infinite;
-    }
-    if (tags) {
-        params.tags = tags;
-    }
-    if (options?.body) {
-        params.body = options.body;
-    }
-    if (options?.headers) {
-        params.headers = options.headers;
-    }
-    if (options?.path) {
-        params.path = options.path;
-    }
-    if (options?.query) {
-        params.query = options.query;
-    }
-    return [params];
 };
 
 export const authWhoamiQueryKey = (options?: Options<AuthWhoamiData>) => createQueryKey('authWhoami', options);

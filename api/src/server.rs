@@ -93,6 +93,10 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .build();
 
     let (r, mut a) = OpenApiRouter::with_openapi(openapi)
+        .routes(routes!(handlers::activation_keys::create_activation_key))
+        .routes(routes!(handlers::activation_keys::list_activation_keys))
+        .routes(routes!(handlers::activation_keys::get_activation_key))
+        .routes(routes!(handlers::activation_keys::delete_activation_key))
         .routes(routes!(handlers::auth::auth_login))
         .routes(routes!(handlers::auth::auth_logout))
         .routes(routes!(handlers::auth::auth_whoami))

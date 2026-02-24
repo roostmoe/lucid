@@ -4,12 +4,12 @@ use ::mongodb::bson::oid::ObjectId;
 use async_trait::async_trait;
 use chrono::Duration;
 use lucid_common::{
-    caller::{Caller, CallerError},
+    caller::Caller,
     params::{CreateLocalUserParams, PaginationParams},
 };
 use thiserror::Error;
 
-use crate::models::{DbHost, DbSession, DbUser};
+use crate::models::{DbActivationKey, DbHost, DbSession, DbUser};
 
 pub mod mongodb;
 
@@ -35,7 +35,9 @@ pub enum StoreError {
 }
 
 #[async_trait]
-pub trait Storage: UserStore + SessionStore + HostStore + Send + Sync + 'static {
+pub trait Storage:
+    UserStore + SessionStore + HostStore + ActivationKeyStore + Send + Sync + 'static
+{
     async fn ping(&self) -> Result<(), StoreError>;
 }
 
@@ -55,8 +57,17 @@ pub trait UserStore {
         pagination: PaginationParams,
     ) -> Result<Vec<DbUser>, StoreError>;
 
-    async fn create_local(&self, caller: Caller, user: CreateLocalUserParams) -> Result<DbUser, StoreError>;
-    async fn auth_local(&self, caller: Caller, email: String, password: String) -> Result<Caller, StoreError>;
+    async fn create_local(
+        &self,
+        caller: Caller,
+        user: CreateLocalUserParams,
+    ) -> Result<DbUser, StoreError>;
+    async fn auth_local(
+        &self,
+        caller: Caller,
+        email: String,
+        password: String,
+    ) -> Result<Caller, StoreError>;
 }
 
 #[async_trait]
@@ -106,5 +117,28 @@ pub trait HostStore {
     ) -> Result<Vec<DbHost>, StoreError>;
     async fn create(&self, caller: Caller, host: DbHost) -> Result<DbHost, StoreError>;
     async fn update(&self, caller: Caller, host: DbHost) -> Result<DbHost, StoreError>;
+    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError>;
+}
+
+#[derive(Debug, Default)]
+pub struct ActivationKeyFilter {
+    pub id: Option<Vec<String>>,
+    pub key_id: Option<Vec<String>>,
+}
+
+#[async_trait]
+pub trait ActivationKeyStore {
+    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbActivationKey>, StoreError>;
+    async fn list(
+        &self,
+        caller: Caller,
+        filter: ActivationKeyFilter,
+        pagination: PaginationParams,
+    ) -> Result<Vec<DbActivationKey>, StoreError>;
+    async fn create(
+        &self,
+        caller: Caller,
+        key: DbActivationKey,
+    ) -> Result<DbActivationKey, StoreError>;
     async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError>;
 }

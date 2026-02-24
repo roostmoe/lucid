@@ -53,7 +53,7 @@ const sidebarItems = [
       {
         type: 'item',
         title: 'Activation Keys',
-        url: '/#activation-keys',
+        url: '/activation-keys',
         icon: IconKey,
       },
     ],
