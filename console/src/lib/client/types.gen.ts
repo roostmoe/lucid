@@ -36,6 +36,10 @@ export type AuthLoginParams = {
  * Response for the login endpoint.
  */
 export type AuthLoginResponse = {
+    /**
+     * CSRF token that must be included in X-CSRF-Token header for mutating requests
+     */
+    csrf_token: string;
     token_type: 'Session';
 } | {
     /**

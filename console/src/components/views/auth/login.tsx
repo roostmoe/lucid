@@ -17,7 +17,14 @@ export const LoginForm = (
   const [password, setPassword] = useState("");
   const { mutate } = useMutation({
     ...authLoginMutation(),
-    onSuccess: () => {
+    onSuccess: data => {
+      if (data.token_type == "Bearer") {
+        window.cookieStore.delete("lucid_session");
+        return;
+      }
+
+      localStorage.setItem("csrf_token", data.csrf_token);
+
       navigate({ to: '/', reloadDocument: true });
     },
   });

@@ -18,6 +18,46 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
     meta?: Record<string, unknown>;
 };
 
+/**
+ * Authenticate user and create session.
+ *
+ * This endpoint validates user credentials and creates a new session stored in the database.
+ * On success, it returns a session cookie and a CSRF token.
+ *
+ * # Flow
+ *
+ * 1. Validates username/password against database
+ * 2. Generates unique session_id (ULID) and csrf_token (32 random chars)
+ * 3. Creates session in database with 30-day TTL
+ * 4. Signs session_id with Ed25519 key
+ * 5. Returns signed token in `lucid_session` cookie + CSRF token in response body
+ *
+ * # Cookie Format
+ *
+ * - Name: `lucid_session`
+ * - Value: `{session_id}.{ed25519_signature}`
+ * - Flags: HttpOnly, SameSite=Lax, Path=/, Max-Age=2592000 (30 days)
+ * - Secure: Only set when `public_url` starts with https://
+ *
+ * # CSRF Token
+ *
+ * The CSRF token must be stored by the client (e.g., in memory or localStorage) and sent
+ * in the `X-CSRF-Token` header for all state-changing requests (POST, PUT, DELETE).
+ *
+ * # Example
+ *
+ * ```bash
+ * curl -X POST http://localhost:3000/v1/auth/login \
+ * -H "Content-Type: application/json" \
+ * -d '{"username": "admin", "password": "secret"}' \
+ * -c cookies.txt
+ * ```
+ *
+ * # Errors
+ *
+ * - 401 Unauthorized: Invalid username or password
+ * - 500 Internal Server Error: Database or signing failure
+ */
 export const authLogin = <ThrowOnError extends boolean = false>(options: Options<AuthLoginData, ThrowOnError>) => (options.client ?? client).post<AuthLoginResponses, AuthLoginErrors, ThrowOnError>({
     responseType: 'json',
     url: '/api/v1/auth/login',
@@ -28,8 +68,70 @@ export const authLogin = <ThrowOnError extends boolean = false>(options: Options
     }
 });
 
+/**
+ * End the current session.
+ *
+ * This endpoint deletes the user's session from the database and clears the session cookie.
+ * Requires both session cookie authentication AND the CSRF token.
+ *
+ * # Flow
+ *
+ * 1. Extracts and verifies session cookie from request
+ * 2. Validates CSRF token (via Auth extractor)
+ * 3. Deletes session from database
+ * 4. Returns cookie with Max-Age=0 to clear it from browser
+ *
+ * # Security
+ *
+ * This is a state-changing operation, so it requires CSRF protection. The session cookie
+ * alone is not sufficient - the CSRF token must also be provided.
+ *
+ * # Example
+ *
+ * ```bash
+ * curl -X POST http://localhost:3000/v1/auth/logout \
+ * -H "X-CSRF-Token: {csrf_token_from_login}" \
+ * -b cookies.txt
+ * ```
+ *
+ * # Errors
+ *
+ * - 401 Unauthorized: Missing or invalid session cookie
+ * - 403 Forbidden: Invalid CSRF token
+ * - 500 Internal Server Error: Database failure
+ */
 export const authLogout = <ThrowOnError extends boolean = false>(options?: Options<AuthLogoutData, ThrowOnError>) => (options?.client ?? client).post<AuthLogoutResponses, AuthLogoutErrors, ThrowOnError>({ url: '/api/v1/auth/logout', ...options });
 
+/**
+ * Get information about the authenticated user.
+ *
+ * Returns the current user's profile information including ID, username, display name,
+ * and email. Requires session cookie authentication (no CSRF token needed for GET requests).
+ *
+ * # Example
+ *
+ * ```bash
+ * curl http://localhost:3000/v1/auth/me \
+ * -b cookies.txt
+ * ```
+ *
+ * # Response
+ *
+ * ```json
+ * {
+ * "id": "user_object_id",
+ * "username": "admin",
+ * "display_name": "Administrator",
+ * "email": "admin@example.com"
+ * }
+ * ```
+ *
+ * # Errors
+ *
+ * - 401 Unauthorized: Missing or invalid session cookie
+ * - 404 Not Found: User no longer exists in database (stale session)
+ * - 500 Internal Server Error: Database failure
+ */
 export const authWhoami = <ThrowOnError extends boolean = false>(options?: Options<AuthWhoamiData, ThrowOnError>) => (options?.client ?? client).get<AuthWhoamiResponses, AuthWhoamiErrors, ThrowOnError>({
     responseType: 'json',
     url: '/api/v1/auth/me',

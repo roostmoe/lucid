@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type PropsWithChildren 
 import type { User } from "../client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { authLogoutMutation, authWhoamiOptions } from "../client/@tanstack/react-query.gen";
+import { client } from "../client/client.gen";
 
 export type AuthContext = {
   loading: boolean;
@@ -46,6 +47,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         authenticated: !error,
         user,
       });
+
+      client.setConfig({
+        headers: {
+          'X-CSRF-Token': localStorage.getItem("csrf_token") || "",
+        }
+      })
     }
   }, [user, isLoading, error]);
 
