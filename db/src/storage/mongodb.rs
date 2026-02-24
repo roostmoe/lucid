@@ -129,7 +129,7 @@ impl UserStore for MongoDBStorage {
                 id: Some(vec![id]),
                 email: None,
             },
-            PaginationParams { limit: 1, page: 0 },
+            PaginationParams { limit: Some(1), page: Some(0) },
         )
         .await?;
 
@@ -144,7 +144,8 @@ impl UserStore for MongoDBStorage {
     ) -> Result<Vec<DbUser>, StoreError> {
         let collection = self.get_db().collection::<DbUser>(MONGODB_COLLECTION_USERS);
 
-        let find_options = FindOptions::builder().limit(pagination.limit);
+        let find_options = FindOptions::builder()
+            .limit(pagination.limit);
 
         let mut filter_doc = doc! {};
         if let Some(ids) = filter.id {
@@ -200,7 +201,7 @@ impl UserStore for MongoDBStorage {
                 id: None,
                 email: Some(vec![email]),
             },
-            PaginationParams { limit: 1, page: 0 },
+            PaginationParams { limit: Some(1), page: Some(0) },
         )
         .await?;
 

@@ -1,9 +1,11 @@
 import { useAuth } from "@/lib/state/auth";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarTrigger } from "./ui/sidebar";
 import { IconChecklist, IconDashboard, IconLogout, IconServer, IconTriangle, type Icon } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Separator } from "./ui/separator";
+import type { PropsWithChildren } from "react";
 
 type AppSidebarItem = {
   type: 'group';
@@ -44,7 +46,7 @@ const sidebarItems = [
       {
         type: 'item',
         title: 'Hosts',
-        url: '/#hosts',
+        url: '/hosts',
         icon: IconServer,
       },
     ],
@@ -100,11 +102,29 @@ export const AppSidebar = () => {
   );
 };
 
-export const AppSidebarNavMain = () => {
+export const AppSiteHeader = ({
+  children,
+  title,
+}: PropsWithChildren<{ title: string; }>) => {
+  return (
+    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+        <SidebarTrigger className="-ml-1" />
+
+        <h1 className="text-base font-medium">{title}</h1>
+        <div className="ml-auto flex items-center gap-2">
+          {children}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+const AppSidebarNavMain = () => {
   return sidebarItems.map((v, idx) => <AppSidebarNavItem key={idx} item={v} />);
 };
 
-export const AppSidebarNavItem = ({ item }: { item: AppSidebarItem }) => {
+const AppSidebarNavItem = ({ item }: { item: AppSidebarItem }) => {
   const { location } = useRouterState();
 
   switch (item.type) {
@@ -141,7 +161,7 @@ export const AppSidebarNavItem = ({ item }: { item: AppSidebarItem }) => {
   }
 };
 
-export const AppSidebarNavUser = () => {
+const AppSidebarNavUser = () => {
   const { user, logout } = useAuth();
   const isMobile = useIsMobile();
 

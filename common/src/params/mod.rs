@@ -19,8 +19,8 @@ pub use user::*;
 pub struct PaginationParams {
     /// The next page token, if any. This is acquired by requesting a paginated
     /// set of records and looking at the `next_token` or `prev_token` field.
-    pub page: i64,
+    pub page: Option<i64>,
 
     /// The maximum number of results to return.
-    pub limit: i64,
+    pub limit: Option<i64>,
 }

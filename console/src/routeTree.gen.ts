@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ConsoleRouteImport } from './routes/_console'
 import { Route as ConsoleIndexRouteImport } from './routes/_console/index'
 import { Route as authAuthRouteImport } from './routes/(auth)/_auth'
+import { Route as ConsoleHostsIndexRouteImport } from './routes/_console/hosts/index'
 import { Route as authAuthAuthLoginRouteImport } from './routes/(auth)/_auth/auth.login'
 
 const ConsoleRoute = ConsoleRouteImport.update({
@@ -27,6 +28,11 @@ const authAuthRoute = authAuthRouteImport.update({
   id: '/(auth)/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsoleHostsIndexRoute = ConsoleHostsIndexRouteImport.update({
+  id: '/hosts/',
+  path: '/hosts/',
+  getParentRoute: () => ConsoleRoute,
+} as any)
 const authAuthAuthLoginRoute = authAuthAuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
@@ -35,10 +41,12 @@ const authAuthAuthLoginRoute = authAuthAuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof ConsoleIndexRoute
+  '/hosts/': typeof ConsoleHostsIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ConsoleIndexRoute
+  '/hosts': typeof ConsoleHostsIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRoutesById {
@@ -46,18 +54,20 @@ export interface FileRoutesById {
   '/_console': typeof ConsoleRouteWithChildren
   '/(auth)/_auth': typeof authAuthRouteWithChildren
   '/_console/': typeof ConsoleIndexRoute
+  '/_console/hosts/': typeof ConsoleHostsIndexRoute
   '/(auth)/_auth/auth/login': typeof authAuthAuthLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth/login'
+  fullPaths: '/' | '/hosts/' | '/auth/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/login'
+  to: '/' | '/hosts' | '/auth/login'
   id:
     | '__root__'
     | '/_console'
     | '/(auth)/_auth'
     | '/_console/'
+    | '/_console/hosts/'
     | '/(auth)/_auth/auth/login'
   fileRoutesById: FileRoutesById
 }
@@ -89,6 +99,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_console/hosts/': {
+      id: '/_console/hosts/'
+      path: '/hosts'
+      fullPath: '/hosts/'
+      preLoaderRoute: typeof ConsoleHostsIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/(auth)/_auth/auth/login': {
       id: '/(auth)/_auth/auth/login'
       path: '/auth/login'
@@ -101,10 +118,12 @@ declare module '@tanstack/react-router' {
 
 interface ConsoleRouteChildren {
   ConsoleIndexRoute: typeof ConsoleIndexRoute
+  ConsoleHostsIndexRoute: typeof ConsoleHostsIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleIndexRoute: ConsoleIndexRoute,
+  ConsoleHostsIndexRoute: ConsoleHostsIndexRoute,
 }
 
 const ConsoleRouteWithChildren =
