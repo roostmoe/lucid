@@ -71,7 +71,13 @@ pub async fn create_activation_key(
     let pem = ctx._config.get_signing_key_pem()?;
 
     let token =
-        generate_activation_key_jwt(&pem, &ctx._config.public_url, &created.key_id, &internal_id)
+        generate_activation_key_jwt(
+            ctx.session_signer.inner().clone(),
+            &pem,
+            &ctx._config.public_url,
+            &created.key_id,
+            &internal_id,
+        )
             .map_err(|e| anyhow::anyhow!(e))?;
 
     let key: ActivationKey = created.into();

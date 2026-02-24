@@ -1,13 +1,13 @@
 use axum::{
     Router,
     extract::MatchedPath,
-    http::{HeaderName, HeaderValue, Request},
+    http::{HeaderName, Request},
     routing::get,
 };
 use lucid_common::views::ApiErrorResponse;
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::CorsLayer,
+    cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
 };
@@ -32,6 +32,7 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .await
         .expect("Failed to initialize API context");
 
+    let cors_public_url = cfg.public_url.clone();
     let x_request_id = HeaderName::from_static(REQUEST_ID_HEADER);
     let middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::new(
@@ -66,7 +67,14 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .layer(
             CorsLayer::new()
                 .allow_credentials(true)
-                .allow_origin(cfg.public_url.parse::<HeaderValue>().unwrap()),
+                .allow_origin(
+                    AllowOrigin::predicate(move |origin, request_parts| {
+                        if request_parts.uri.path().starts_with("/.well-known") {
+                            return true
+                        }
+                        origin.as_bytes().starts_with(cors_public_url.as_bytes())
+                    })
+                ),
         )
         .layer(PropagateRequestIdLayer::new(x_request_id));
 
@@ -103,6 +111,7 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::hosts::list_hosts))
         .routes(routes!(handlers::hosts::get_host))
         .routes(routes!(handlers::jwks::get_jwks))
+        .routes(routes!(handlers::jwks::get_openid_configuration))
         .route("/healthz", get(handlers::health_check))
         .fallback(not_found_handler)
         .layer(middleware)

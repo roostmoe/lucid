@@ -43,6 +43,13 @@ pub struct JwkSet {
     keys: Vec<Jwk>,
 }
 
+/// OpenID Connect discovery response (minimal, for JWT verification only).
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct OpenIdConfiguration {
+    /// URL to the JWKS endpoint for retrieving public keys.
+    jwks_uri: String,
+}
+
 /// Retrieve the server's public JSON Web Key Set.
 ///
 /// Returns the Ed25519 public key(s) used by this server to sign tokens.
@@ -94,6 +101,36 @@ pub async fn get_jwks(State(ctx): State<ApiContext>) -> Result<Json<JwkSet>, Api
     };
 
     Ok(Json(JwkSet { keys: vec![key] }))
+}
+
+/// OpenID Connect discovery endpoint.
+///
+/// Returns minimal OIDC configuration needed for JWT verification.
+/// Only includes `jwks_uri` pointing to the JWKS endpoint.
+///
+/// # Example
+///
+/// ```bash
+/// curl http://localhost:4000/.well-known/openid-configuration
+/// ```
+///
+/// ```json
+/// {
+///   "jwks_uri": "http://localhost:4000/.well-known/jwks.json"
+/// }
+/// ```
+#[utoipa::path(
+    get,
+    path = "/.well-known/openid-configuration",
+    tags = ["auth"],
+    responses((status = 200, description = "OpenID Connect discovery document", body = OpenIdConfiguration))
+)]
+pub async fn get_openid_configuration(
+    State(ctx): State<ApiContext>,
+) -> Result<Json<OpenIdConfiguration>, ApiError> {
+    let jwks_uri = format!("{}/.well-known/jwks.json", ctx._config.public_url);
+
+    Ok(Json(OpenIdConfiguration { jwks_uri }))
 }
 
 #[cfg(test)]

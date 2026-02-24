@@ -60,6 +60,9 @@ pub trait Signer: Send + Sync {
     /// Returns `true` if the signature is valid for the given payload.
     /// Returns `false` for any verification failure (invalid signature, wrong key, etc.).
     fn verify(&self, payload: &[u8], signature: &[u8]) -> bool;
+
+    /// Return a unique identifier for the signing key, if available.
+    fn key_id(&self) -> String;
 }
 
 /// Errors that can occur during signing operations.
@@ -190,6 +193,11 @@ impl Signer for Ed25519Signer {
             return false;
         };
         self.verifying_key.verify(payload, &sig).is_ok()
+    }
+
+    fn key_id(&self) -> String {
+        let kid = &self.public_key_bytes()[..8];
+        URL_SAFE_NO_PAD.encode(kid)
     }
 }
 

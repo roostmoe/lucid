@@ -3,6 +3,8 @@
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 
+use crate::auth::signing::Signer;
+
 use super::signing::SigningError;
 
 /// Claims for activation key JWTs.
@@ -20,6 +22,7 @@ pub struct ActivationKeyClaims {
 
 /// Generate a JWT for an activation key.
 pub fn generate_activation_key_jwt(
+    signer: impl Signer,
     pem_key: &str,
     public_url: &str,
     key_id: &str,
@@ -32,7 +35,9 @@ pub fn generate_activation_key_jwt(
         iat: chrono::Utc::now().timestamp(),
     };
 
-    let header = Header::new(Algorithm::EdDSA);
+    let mut header = Header::new(Algorithm::EdDSA);
+    header.kid = Some(signer.key_id());
+    header.jku = Some(format!("{}/.well-known/jwks.json", public_url));
     let encoding_key = EncodingKey::from_ed_pem(pem_key.as_bytes())
         .map_err(|e| SigningError::InvalidPem(e.to_string()))?;
 
@@ -41,6 +46,8 @@ pub fn generate_activation_key_jwt(
 
 #[cfg(test)]
 mod tests {
+    use crate::auth::signing::Ed25519Signer;
+
     use super::*;
 
     // Test keypair from signing.rs tests
@@ -50,7 +57,10 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
 
     #[test]
     fn test_jwt_has_three_parts() {
+        let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
+
         let jwt = generate_activation_key_jwt(
+            signer,
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key-id",
@@ -73,12 +83,13 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
         use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
         use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 
+        let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
         let public_url = "https://lucid.example.com";
         let key_id = "test-key-id";
         let internal_id = "internal-abc123";
 
         let jwt =
-            generate_activation_key_jwt(TEST_PRIVATE_KEY_PEM, public_url, key_id, internal_id)
+            generate_activation_key_jwt(signer, TEST_PRIVATE_KEY_PEM, public_url, key_id, internal_id)
                 .unwrap();
 
         // Extract and decode the payload manually to verify structure
@@ -129,7 +140,10 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
 
     #[test]
     fn test_jwt_invalid_pem_returns_error() {
+        let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
+
         let result = generate_activation_key_jwt(
+            signer,
             "not a valid pem",
             "https://lucid.example.com",
             "test-key",
@@ -150,7 +164,11 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
 MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
 -----END PRIVATE KEY-----"#;
 
+        let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
+        let signer_2 = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM_2).unwrap();
+
         let jwt1 = generate_activation_key_jwt(
+            signer,
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "same-key-id",
@@ -159,6 +177,7 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
         .unwrap();
 
         let jwt2 = generate_activation_key_jwt(
+            signer_2,
             TEST_PRIVATE_KEY_PEM_2,
             "https://lucid.example.com",
             "same-key-id",
@@ -180,7 +199,10 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
     fn test_jwt_same_inputs_produce_different_tokens_due_to_timestamp() {
         use std::{thread, time::Duration};
 
+        let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
+
         let jwt1 = generate_activation_key_jwt(
+            signer.clone(),
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key",
@@ -192,6 +214,7 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
         thread::sleep(Duration::from_millis(1001));
 
         let jwt2 = generate_activation_key_jwt(
+            signer,
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key",
@@ -210,7 +233,10 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
     fn test_jwt_header_algorithm_is_eddsa() {
         use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 
+        let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
+
         let jwt = generate_activation_key_jwt(
+            signer,
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key",

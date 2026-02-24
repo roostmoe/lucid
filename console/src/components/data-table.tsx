@@ -1,27 +1,24 @@
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
-import { IconArrowUpRight, IconExclamationMark, IconFolderQuestion, type Icon } from "@tabler/icons-react";
+import { IconArrowUpRight, IconExclamationMark, IconFolderQuestion, type ReactNode } from "@tabler/icons-react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { Link } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 
 export type DataTableProps<TData, TValue, TQueryResultData> = {
   columns: ColumnDef<TData, TValue>[];
   query: UseQueryResult<TQueryResultData, AxiosError<Error, any>>;
   queryResultDataToData?: (queryResultData?: TQueryResultData) => TData[];
+  embedded?: boolean;
   empty?: {
     title?: string;
     description?: string;
     learnMore?: string;
-    actions?: {
-      title: string,
-      icon?: Icon,
-      link: string,
-      variant: 'default' | 'outline' | 'link',
-    }[];
+    actions?: ReactNode | ReactNode[];
   };
 };
 
@@ -29,6 +26,7 @@ export const DataTable = <TData, TValue, TQueryResultData>({
   columns,
   query: { data, error, isLoading, isFetching },
   queryResultDataToData = (queryResultData?: TQueryResultData) => queryResultData as unknown as TData[],
+  embedded = false,
   empty = {
     title: 'No data',
     description: 'We couldn\'t find any data to display.',
@@ -42,13 +40,13 @@ export const DataTable = <TData, TValue, TQueryResultData>({
   });
 
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className={cn("overflow-hidden", !embedded && "rounded-md border")}>
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
+                <TableHead key={header.id} className="px-4 md:px-6">
                   {
                     header.isPlaceholder
                       ? null
@@ -70,7 +68,7 @@ export const DataTable = <TData, TValue, TQueryResultData>({
               Array.from(Array(10), (_, i) => (
                 <TableRow key={i}>
                   {Array.from(Array(columns.length), (_, ii) => (
-                    <TableCell key={ii}>
+                    <TableCell key={ii} className="px-4 md:px-6">
                       <Skeleton className="h-4 w-16" />
                     </TableCell>
                   ))}
@@ -87,7 +85,7 @@ export const DataTable = <TData, TValue, TQueryResultData>({
                             <IconExclamationMark />
                           </EmptyMedia>
                           <EmptyTitle>We couldn't fetch that.</EmptyTitle>
-                          <EmptyDescription>{error.response?.data.message} ({error.response?.data.code})</EmptyDescription>
+                          <EmptyDescription>{error.response?.data.message}</EmptyDescription>
                         </EmptyHeader>
                       </Empty>
                     </TableCell>
@@ -100,7 +98,7 @@ export const DataTable = <TData, TValue, TQueryResultData>({
                         data-state={row.getIsSelected() && "selected"}
                       >
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
+                          <TableCell key={cell.id} className="px-4 md:px-6">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
                         ))}
@@ -118,20 +116,10 @@ export const DataTable = <TData, TValue, TQueryResultData>({
                             <EmptyDescription>{empty.description}</EmptyDescription>
                           </EmptyHeader>
                           <EmptyContent className="flex-row justify-center gap-2">
-                            {
-                              empty.actions?.map((item, i) => (
-                                <Button key={i} variant={item.variant} render={(
-                                  <Link to={item.link} target={item.link.startsWith('http') ? '_blank' : undefined}>
-                                    {item.icon && <item.icon />}
-                                    {item.title}
-                                    {item.link.startsWith('http') && <IconArrowUpRight />}
-                                  </Link>
-                                )} />
-                              ))
-                            }
+                            {empty.actions}
                           </EmptyContent>
                           {empty.learnMore && (
-                            <Button variant="link" render={(
+                            <Button variant="link" nativeButton={false} render={(
                               <Link to={empty.learnMore} target="_blank">
                                 Learn more
                                 <IconArrowUpRight />
