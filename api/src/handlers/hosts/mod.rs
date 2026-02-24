@@ -22,8 +22,7 @@ pub async fn list_hosts(
     Auth(caller): Auth,
     Query(query): Query<PaginationParams>,
 ) -> Result<Json<PaginatedList<Host>>, ApiError> {
-    let hosts = HostStore::list(&*ctx.db, caller, HostFilter::default(), query)
-        .await?;
+    let hosts = HostStore::list(&*ctx.db, caller, HostFilter::default(), query).await?;
 
     Ok(Json(PaginatedList {
         // TODO: Find a way to do this without cloning

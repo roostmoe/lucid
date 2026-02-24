@@ -170,6 +170,13 @@ impl Ed25519Signer {
     pub fn public_key(&self) -> &VerifyingKey {
         &self.verifying_key
     }
+
+    /// Get the raw 32-byte public key material.
+    ///
+    /// Used for constructing JWK representations of this key.
+    pub fn public_key_bytes(&self) -> &[u8; 32] {
+        self.verifying_key.as_bytes()
+    }
 }
 
 impl Signer for Ed25519Signer {
@@ -235,6 +242,11 @@ impl<S: Signer> SessionSigner<S> {
     /// Create a new session signer with the given underlying signer.
     pub fn new(signer: S) -> Self {
         Self { signer }
+    }
+
+    /// Get a reference to the underlying signer.
+    pub fn inner(&self) -> &S {
+        &self.signer
     }
 
     /// Sign a session ID, returning a token in the format `{session_id}.{signature}`.

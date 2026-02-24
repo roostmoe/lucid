@@ -64,7 +64,8 @@ pub async fn auth_login(
     Json(body): Json<AuthLoginParams>,
 ) -> Result<(HeaderMap, Json<AuthLoginResponse>), ApiError> {
     // 1. Authenticate user
-    let caller = UserStore::auth_local(&*ctx.db, Caller::System, body.username, body.password).await?;
+    let caller =
+        UserStore::auth_local(&*ctx.db, Caller::System, body.username, body.password).await?;
 
     // 2. Extract user_id from Caller
     let user_id = match &caller {

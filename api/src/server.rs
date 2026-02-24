@@ -98,6 +98,7 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::auth::auth_whoami))
         .routes(routes!(handlers::hosts::list_hosts))
         .routes(routes!(handlers::hosts::get_host))
+        .routes(routes!(handlers::jwks::get_jwks))
         .route("/healthz", get(handlers::health_check))
         .fallback(not_found_handler)
         .layer(middleware)

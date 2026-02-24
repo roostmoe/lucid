@@ -46,7 +46,9 @@ impl From<ApiError> for ApiErrorResponse {
                 ApiError::NotFound => "The requested resource was not found.".into(),
                 ApiError::Storage(se) => match se {
                     StoreError::NotFound => "The requested resource was not found.".into(),
-                    StoreError::PermissionDenied => "You do not have permission to perform this action.".into(),
+                    StoreError::PermissionDenied => {
+                        "You do not have permission to perform this action.".into()
+                    }
                     _ => "Something went wrong on our end. Please try again later.".into(),
                 },
                 ApiError::CallerError(ce) => match ce {
