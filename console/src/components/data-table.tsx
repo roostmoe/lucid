@@ -1,21 +1,39 @@
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
-import { IconExclamationMark, IconFolderQuestion } from "@tabler/icons-react";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
+import { IconArrowUpRight, IconExclamationMark, IconFolderQuestion, type Icon } from "@tabler/icons-react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { Skeleton } from "./ui/skeleton";
+import { Button } from "./ui/button";
+import { Link } from "@tanstack/react-router";
 
 export type DataTableProps<TData, TValue, TQueryResultData> = {
   columns: ColumnDef<TData, TValue>[];
   query: UseQueryResult<TQueryResultData, AxiosError<Error, any>>;
   queryResultDataToData?: (queryResultData?: TQueryResultData) => TData[];
+  empty?: {
+    title?: string;
+    description?: string;
+    learnMore?: string;
+    actions?: {
+      title: string,
+      icon?: Icon,
+      link: string,
+      variant: 'default' | 'outline' | 'link',
+    }[];
+  };
 };
 
 export const DataTable = <TData, TValue, TQueryResultData>({
   columns,
   query: { data, error, isLoading, isFetching },
   queryResultDataToData = (queryResultData?: TQueryResultData) => queryResultData as unknown as TData[],
+  empty = {
+    title: 'No data',
+    description: 'We couldn\'t find any data to display.',
+    actions: [],
+  },
 }: DataTableProps<TData, TValue, TQueryResultData>) => {
   const table = useReactTable({
     data: queryResultDataToData(data),
@@ -96,9 +114,30 @@ export const DataTable = <TData, TValue, TQueryResultData>({
                             <EmptyMedia variant="icon">
                               <IconFolderQuestion />
                             </EmptyMedia>
-                            <EmptyTitle>No data</EmptyTitle>
-                            <EmptyDescription>We couldn&apos;t find any data to display.</EmptyDescription>
+                            <EmptyTitle>{empty.title}</EmptyTitle>
+                            <EmptyDescription>{empty.description}</EmptyDescription>
                           </EmptyHeader>
+                          <EmptyContent className="flex-row justify-center gap-2">
+                            {
+                              empty.actions?.map((item, i) => (
+                                <Button key={i} variant={item.variant} render={(
+                                  <Link to={item.link} target={item.link.startsWith('http') ? '_blank' : undefined}>
+                                    {item.icon && <item.icon />}
+                                    {item.title}
+                                    {item.link.startsWith('http') && <IconArrowUpRight />}
+                                  </Link>
+                                )} />
+                              ))
+                            }
+                          </EmptyContent>
+                          {empty.learnMore && (
+                            <Button variant="link" render={(
+                              <Link to={empty.learnMore} target="_blank">
+                                Learn more
+                                <IconArrowUpRight />
+                              </Link>
+                            )} />
+                          )}
                         </Empty>
                       </TableCell>
                     </TableRow>
