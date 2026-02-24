@@ -64,7 +64,7 @@ pub async fn auth_login(
     Json(body): Json<AuthLoginParams>,
 ) -> Result<(HeaderMap, Json<AuthLoginResponse>), ApiError> {
     // 1. Authenticate user
-    let caller = UserStore::auth_local(&*ctx.db, body.username, body.password).await?;
+    let caller = UserStore::auth_local(&*ctx.db, Caller::System, body.username, body.password).await?;
 
     // 2. Extract user_id from Caller
     let user_id = match &caller {
@@ -247,7 +247,7 @@ pub async fn auth_whoami(
     Auth(caller): Auth,
 ) -> Result<Json<User>, ApiError> {
     // Fetch full user from database
-    let user = UserStore::get(&*ctx.db, caller.id().to_string())
+    let user = UserStore::get(&*ctx.db, caller.clone(), caller.id().to_string())
         .await?
         .ok_or_else(|| anyhow::anyhow!("user not found"))?;
 

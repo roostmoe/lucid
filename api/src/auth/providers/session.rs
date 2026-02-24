@@ -171,7 +171,7 @@ impl<S: Signer> AuthProvider for SessionAuthProvider<S> {
         info!(?session.user_id, "CSRF check passed, loading user...");
 
         // 6. Fetch user
-        let user = UserStore::get(&*self.db, session.user_id.to_string())
+        let user = UserStore::get(&*self.db, Caller::System, session.user_id.to_string())
             .await?
             .ok_or(AuthError::InvalidCredentials)?;
 

@@ -6,17 +6,30 @@ use utoipa::ToSchema;
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
 pub struct Host {
     /// The unique identifier for this host.
-    pub id: Ulid,
+    pub id: String,
 
     /// Hostname of the machine. This is a human-readable identifier for the
     /// host, and is not guaranteed to be unique.
     pub hostname: String,
+
+    /// The ID of the host's operating system, read from /etc/os-release.
+    pub os_id: String,
+
+    /// The name of the host's operating system, read from /etc/os-release.
+    pub os_name: String,
+
+    /// The version of the host's operating system, read from /etc/os-release.
+    pub os_version: String,
+
+    /// The CPU architecture of the host, read from `uname -m`.
+    pub architecture: String,
 
     /// Network interfaces associated with this host. This is a one-to-many
     /// relationship, as a host can have multiple network interfaces.
     pub ifaces: Vec<NetworkInterface>,
 
     pub created_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 

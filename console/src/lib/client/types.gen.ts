@@ -60,6 +60,10 @@ export type AuthLoginResponse = {
 };
 
 export type Host = {
+    /**
+     * The CPU architecture of the host, read from `uname -m`.
+     */
+    architecture: string;
     created_at: string;
     /**
      * Hostname of the machine. This is a human-readable identifier for the
@@ -75,6 +79,19 @@ export type Host = {
      * relationship, as a host can have multiple network interfaces.
      */
     ifaces: Array<NetworkInterface>;
+    last_seen_at: string;
+    /**
+     * The ID of the host's operating system, read from /etc/os-release.
+     */
+    os_id: string;
+    /**
+     * The name of the host's operating system, read from /etc/os-release.
+     */
+    os_name: string;
+    /**
+     * The version of the host's operating system, read from /etc/os-release.
+     */
+    os_version: string;
     updated_at: string;
 };
 
@@ -112,6 +129,10 @@ export type NetworkInterfaceState = 'Up' | 'Down' | 'Unknown';
  */
 export type PaginatedListHost = {
     items: Array<{
+        /**
+         * The CPU architecture of the host, read from `uname -m`.
+         */
+        architecture: string;
         created_at: string;
         /**
          * Hostname of the machine. This is a human-readable identifier for the
@@ -127,6 +148,19 @@ export type PaginatedListHost = {
          * relationship, as a host can have multiple network interfaces.
          */
         ifaces: Array<NetworkInterface>;
+        last_seen_at: string;
+        /**
+         * The ID of the host's operating system, read from /etc/os-release.
+         */
+        os_id: string;
+        /**
+         * The name of the host's operating system, read from /etc/os-release.
+         */
+        os_name: string;
+        /**
+         * The version of the host's operating system, read from /etc/os-release.
+         */
+        os_version: string;
         updated_at: string;
     }>;
     /**

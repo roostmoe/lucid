@@ -1,5 +1,5 @@
 use clap::Parser;
-use lucid_common::params::CreateLocalUserParams;
+use lucid_common::{caller::Caller, params::CreateLocalUserParams};
 use lucid_db::storage::UserStore;
 
 #[derive(Clone, Parser)]
@@ -24,6 +24,7 @@ pub async fn create_user(
 ) -> anyhow::Result<()> {
     let new_user = UserStore::create_local(
         stg,
+        Caller::System,
         CreateLocalUserParams {
             display_name,
             email,

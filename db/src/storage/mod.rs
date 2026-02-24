@@ -4,12 +4,12 @@ use ::mongodb::bson::oid::ObjectId;
 use async_trait::async_trait;
 use chrono::Duration;
 use lucid_common::{
-    caller::Caller,
+    caller::{Caller, CallerError},
     params::{CreateLocalUserParams, PaginationParams},
 };
 use thiserror::Error;
 
-use crate::models::{DbSession, DbUser};
+use crate::models::{DbHost, DbSession, DbUser};
 
 pub mod mongodb;
 
@@ -20,6 +20,9 @@ pub enum StoreError {
 
     #[error("Invalid credentials")]
     InvalidCredentials,
+
+    #[error("Permission denied")]
+    PermissionDenied,
 
     #[error("Query Error: {0}")]
     MongoDB(#[from] ::mongodb::error::Error),
@@ -32,7 +35,7 @@ pub enum StoreError {
 }
 
 #[async_trait]
-pub trait Storage: UserStore + SessionStore + Send + Sync + 'static {
+pub trait Storage: UserStore + SessionStore + HostStore + Send + Sync + 'static {
     async fn ping(&self) -> Result<(), StoreError>;
 }
 
@@ -44,15 +47,16 @@ pub struct UserFilter {
 
 #[async_trait]
 pub trait UserStore {
-    async fn get(&self, id: String) -> Result<Option<DbUser>, StoreError>;
+    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbUser>, StoreError>;
     async fn list(
         &self,
+        caller: Caller,
         filter: UserFilter,
         pagination: PaginationParams,
     ) -> Result<Vec<DbUser>, StoreError>;
 
-    async fn create_local(&self, user: CreateLocalUserParams) -> Result<DbUser, StoreError>;
-    async fn auth_local(&self, email: String, password: String) -> Result<Caller, StoreError>;
+    async fn create_local(&self, caller: Caller, user: CreateLocalUserParams) -> Result<DbUser, StoreError>;
+    async fn auth_local(&self, caller: Caller, email: String, password: String) -> Result<Caller, StoreError>;
 }
 
 #[async_trait]
@@ -80,4 +84,27 @@ pub trait SessionStore {
 
     /// Delete all sessions for a user (logout everywhere)
     async fn delete_user_sessions(&self, user_id: ObjectId) -> Result<u64, StoreError>;
+}
+
+#[derive(Debug, Default)]
+pub struct HostFilter {
+    pub id: Option<Vec<String>>,
+    pub arch: Option<Vec<String>>,
+    pub os_name: Option<Vec<String>>,
+    pub os_version: Option<Vec<String>>,
+    pub hostname: Option<Vec<String>>,
+}
+
+#[async_trait]
+pub trait HostStore {
+    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbHost>, StoreError>;
+    async fn list(
+        &self,
+        caller: Caller,
+        filter: HostFilter,
+        pagination: PaginationParams,
+    ) -> Result<Vec<DbHost>, StoreError>;
+    async fn create(&self, caller: Caller, host: DbHost) -> Result<DbHost, StoreError>;
+    async fn update(&self, caller: Caller, host: DbHost) -> Result<DbHost, StoreError>;
+    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError>;
 }

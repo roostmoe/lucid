@@ -198,8 +198,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "ulid"
+              "type": "string"
             }
           }
         ],
@@ -344,11 +343,20 @@
         "required": [
           "id",
           "hostname",
+          "os_id",
+          "os_name",
+          "os_version",
+          "architecture",
           "ifaces",
           "created_at",
+          "last_seen_at",
           "updated_at"
         ],
         "properties": {
+          "architecture": {
+            "type": "string",
+            "description": "The CPU architecture of the host, read from `uname -m`."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -359,7 +367,6 @@
           },
           "id": {
             "type": "string",
-            "format": "ulid",
             "description": "The unique identifier for this host."
           },
           "ifaces": {
@@ -368,6 +375,22 @@
               "$ref": "#/components/schemas/NetworkInterface"
             },
             "description": "Network interfaces associated with this host. This is a one-to-many\nrelationship, as a host can have multiple network interfaces."
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "os_id": {
+            "type": "string",
+            "description": "The ID of the host's operating system, read from /etc/os-release."
+          },
+          "os_name": {
+            "type": "string",
+            "description": "The name of the host's operating system, read from /etc/os-release."
+          },
+          "os_version": {
+            "type": "string",
+            "description": "The version of the host's operating system, read from /etc/os-release."
           },
           "updated_at": {
             "type": "string",
@@ -436,11 +459,20 @@
               "required": [
                 "id",
                 "hostname",
+                "os_id",
+                "os_name",
+                "os_version",
+                "architecture",
                 "ifaces",
                 "created_at",
+                "last_seen_at",
                 "updated_at"
               ],
               "properties": {
+                "architecture": {
+                  "type": "string",
+                  "description": "The CPU architecture of the host, read from `uname -m`."
+                },
                 "created_at": {
                   "type": "string",
                   "format": "date-time"
@@ -451,7 +483,6 @@
                 },
                 "id": {
                   "type": "string",
-                  "format": "ulid",
                   "description": "The unique identifier for this host."
                 },
                 "ifaces": {
@@ -460,6 +491,22 @@
                     "$ref": "#/components/schemas/NetworkInterface"
                   },
                   "description": "Network interfaces associated with this host. This is a one-to-many\nrelationship, as a host can have multiple network interfaces."
+                },
+                "last_seen_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "os_id": {
+                  "type": "string",
+                  "description": "The ID of the host's operating system, read from /etc/os-release."
+                },
+                "os_name": {
+                  "type": "string",
+                  "description": "The name of the host's operating system, read from /etc/os-release."
+                },
+                "os_version": {
+                  "type": "string",
+                  "description": "The version of the host's operating system, read from /etc/os-release."
                 },
                 "updated_at": {
                   "type": "string",

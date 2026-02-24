@@ -1,5 +1,6 @@
 use axum::{Json, response::IntoResponse};
 use lucid_common::{caller::CallerError, views::ApiErrorResponse};
+use lucid_db::storage::StoreError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -28,7 +29,11 @@ impl From<ApiError> for ApiErrorResponse {
         ApiErrorResponse {
             code: match &err {
                 ApiError::NotFound => Some("NotFound".into()),
-                ApiError::Storage(_) => Some("InternalError".into()),
+                ApiError::Storage(se) => match se {
+                    StoreError::NotFound => Some("NotFound".into()),
+                    StoreError::PermissionDenied => Some("Forbidden".into()),
+                    _ => Some("InternalError".into()),
+                },
                 ApiError::InternalAnyhow(_) => Some("InternalError".into()),
                 ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => Some("Forbidden".into()),
@@ -39,9 +44,11 @@ impl From<ApiError> for ApiErrorResponse {
 
             message: match &err {
                 ApiError::NotFound => "The requested resource was not found.".into(),
-                ApiError::Storage(_) => {
-                    "Something went wrong on our end. Please try again later.".into()
-                }
+                ApiError::Storage(se) => match se {
+                    StoreError::NotFound => "The requested resource was not found.".into(),
+                    StoreError::PermissionDenied => "You do not have permission to perform this action.".into(),
+                    _ => "Something went wrong on our end. Please try again later.".into(),
+                },
                 ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => {
                         "You do not have permission to perform this action.".into()
@@ -73,7 +80,11 @@ impl IntoResponse for ApiError {
 
         let status_code = match &self {
             Self::NotFound => axum::http::StatusCode::NOT_FOUND,
-            Self::Storage(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Storage(se) => match se {
+                StoreError::NotFound => axum::http::StatusCode::NOT_FOUND,
+                StoreError::PermissionDenied => axum::http::StatusCode::FORBIDDEN,
+                _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            },
             Self::CallerError(ce) => match ce {
                 CallerError::Forbidden { .. } => axum::http::StatusCode::FORBIDDEN,
                 CallerError::Unauthorized { .. } => axum::http::StatusCode::UNAUTHORIZED,

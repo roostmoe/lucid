@@ -4,6 +4,8 @@ import type { PropsWithChildren } from 'react';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // Disable retry to improve user UX and get error feedback faster.
+      retry: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       refetchOnMount: false,
