@@ -1,11 +1,11 @@
 import { useAuth } from "@/lib/state/auth";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarTrigger } from "./ui/sidebar";
-import { IconChecklist, IconDashboard, IconLogout, IconServer, IconTriangle, type Icon } from "@tabler/icons-react";
+import { IconBox, IconChecklist, IconDashboard, IconDatabase, IconExclamationCircle, IconKey, IconLogout, IconServer, IconTriangle, type Icon } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Separator } from "./ui/separator";
 import type { PropsWithChildren } from "react";
+import { Badge } from "./ui/badge";
 
 type AppSidebarItem = {
   type: 'group';
@@ -17,6 +17,7 @@ type AppSidebarItem = {
   url: string;
   activeExact?: boolean;
   icon?: Icon;
+  badge?: number;
 } | {
   type: 'collapsible';
   title: string;
@@ -49,6 +50,12 @@ const sidebarItems = [
         url: '/hosts',
         icon: IconServer,
       },
+      {
+        type: 'item',
+        title: 'Activation Keys',
+        url: '/#activation-keys',
+        icon: IconKey,
+      },
     ],
   },
   {
@@ -60,12 +67,38 @@ const sidebarItems = [
         title: 'Vulnerabilities',
         url: '/#vulns',
         icon: IconTriangle,
+        badge: 6,
       },
       {
         type: 'item',
         title: 'Compliance',
         url: '/#compliance',
         icon: IconChecklist,
+      },
+    ],
+  },
+  {
+    type: 'group',
+    title: 'Content',
+    items: [
+      {
+        type: 'item',
+        title: 'Advisories',
+        url: '/#content/repos',
+        icon: IconExclamationCircle,
+        badge: 5,
+      },
+      {
+        type: 'item',
+        title: 'Packages',
+        url: '/#content/entitlements',
+        icon: IconBox,
+      },
+      {
+        type: 'item',
+        title: 'Repositories',
+        url: '/#content/repos',
+        icon: IconDatabase,
       },
     ],
   },
@@ -148,12 +181,17 @@ const AppSidebarNavItem = ({ item }: { item: AppSidebarItem }) => {
           : location.pathname.startsWith(item.url)
       );
 
+      const badge = item.badge != undefined
+        ? <Badge variant={item.badge == 0 ? "outline" : "default"} className="ml-auto">{item.badge}</Badge>
+        : <></>
+
       return (
         <SidebarMenuItem>
           <SidebarMenuButton isActive={isActive} render={(
             <Link to={item.url}>
               {item.icon && <item.icon />}
               <span>{item.title}</span>
+              {badge}
             </Link>
           )} />
         </SidebarMenuItem>
