@@ -200,6 +200,7 @@ impl From<DbActivationKey> for ActivationKey {
                 .unwrap_or_else(|| "unknown".into()),
             key_id: value.key_id.clone(),
             description: value.description.clone(),
+            used: value.used_by_agent_id.is_some(),
             created_at: value.created_at(),
         }
     }

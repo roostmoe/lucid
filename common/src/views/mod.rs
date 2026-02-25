@@ -8,6 +8,9 @@ use utoipa::ToSchema;
 mod activation_key;
 pub use activation_key::*;
 
+mod agent;
+pub use agent::*;
+
 mod auth;
 pub use auth::*;
 

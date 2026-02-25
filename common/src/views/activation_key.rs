@@ -11,6 +11,8 @@ pub struct ActivationKey {
     pub key_id: String,
     /// Human-readable description
     pub description: String,
+    /// Whether or not the key has been used to register an agent
+    pub used: bool,
     /// When the key was created
     pub created_at: DateTime<Utc>,
 }

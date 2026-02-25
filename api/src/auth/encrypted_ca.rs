@@ -243,13 +243,20 @@ pub async fn generate_ca(
     let cert_pem = cert.pem();
     let private_key_pem = key_pair.serialize_pem();
 
+    // Pre-generate the ObjectId so we can use it as AAD during encryption.
+    // This prevents ciphertext transplantation: the encrypted key is bound to
+    // this specific CA record and cannot be decrypted if moved to another.
+    let ca_id = ObjectId::new();
+    let aad = ca_id.to_hex();
+
     // Encrypt private key
-    let encrypted_private_key = aes::encrypt(encryption_key, private_key_pem.as_bytes(), b"")
-        .map_err(|e| CaError::Encryption(e.to_string()))?;
+    let encrypted_private_key =
+        aes::encrypt(encryption_key, private_key_pem.as_bytes(), aad.as_bytes())
+            .map_err(|e| CaError::Encryption(e.to_string()))?;
 
     // Create DbCa
     let db_ca = DbCa {
-        id: None,
+        id: Some(ca_id),
         cert_pem: cert_pem.clone(),
         encrypted_private_key,
         created_at: now,

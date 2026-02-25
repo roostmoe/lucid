@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import type { ActivationKey } from "@/lib/client";
 import { deleteActivationKeyMutation, listActivationKeysQueryKey } from "@/lib/client/@tanstack/react-query.gen";
-import { IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconTrash, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -23,6 +23,18 @@ export const keysTableColumns: ColumnDef<ActivationKey>[] = [
   {
     accessorKey: 'description',
     header: 'Description',
+  },
+
+  {
+    accessorKey: 'used',
+    header: 'Used',
+    cell: ({ row }) => {
+      const used = row.getValue('used') as string;
+      if (used) {
+        return <IconCheck className="text-green-500" />
+      }
+      return <IconX className="text-destructive" />
+    },
   },
 
   {

@@ -1,12 +1,14 @@
-use crate::config::{AGENT_DATA_DIR, auth_cert_path, auth_key_path, ca_cert_path};
+use crate::config::{auth_cert_path, auth_key_path, ca_cert_path};
 use crate::crypto::{create_csr, generate_keypair};
 use anyhow::{Context, Result, bail};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use lucid_common::params::RegisterAgentRequest;
+use lucid_common::views::RegisterAgentResponse;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize)]
 struct JwtClaims {
@@ -14,27 +16,12 @@ struct JwtClaims {
     // other fields we don't need
 }
 
-#[derive(Serialize)]
-struct RegisterRequest {
-    csr_pem: String,
-    hostname: String,
-}
-
-#[derive(Deserialize)]
-struct RegisterResponse {
-    agent_id: String,
-    certificate_pem: String,
-    ca_certificate_pem: String,
-    expires_at: String,
-    api_base_url: String,
-}
-
-pub async fn register(token: &str) -> Result<()> {
+pub async fn register(token: &str, data_dir: PathBuf) -> Result<()> {
     // 1. Check if already registered
-    if auth_key_path().exists() {
+    if auth_key_path(data_dir.clone()).exists() {
         bail!(
             "Agent already registered. Delete {} to re-register.",
-            auth_key_path().display()
+            auth_key_path(data_dir.clone()).display()
         );
     }
 
@@ -61,7 +48,7 @@ pub async fn register(token: &str) -> Result<()> {
     let response = client
         .post(format!("{}/api/v1/agents/register", api_url))
         .header("Authorization", format!("Bearer {}", token))
-        .json(&RegisterRequest { csr_pem, hostname })
+        .json(&RegisterAgentRequest { csr_pem, hostname })
         .send()
         .await
         .context("Failed to send registration request")?;
@@ -72,18 +59,18 @@ pub async fn register(token: &str) -> Result<()> {
         bail!("Registration failed ({}): {}", status, body);
     }
 
-    let reg_response: RegisterResponse = response
+    let reg_response: RegisterAgentResponse = response
         .json()
         .await
         .context("Failed to parse registration response")?;
 
     // 7. Create directory if needed
-    fs::create_dir_all(AGENT_DATA_DIR).context(format!("Failed to create {}", AGENT_DATA_DIR))?;
+    fs::create_dir_all(data_dir.clone()).context(format!("Failed to create {:?}", data_dir.clone()))?;
 
     // 8. Write files atomically
-    write_file_atomic(&auth_key_path(), &private_key_pem, 0o600)?;
-    write_file_atomic(&auth_cert_path(), &reg_response.certificate_pem, 0o644)?;
-    write_file_atomic(&ca_cert_path(), &reg_response.ca_certificate_pem, 0o644)?;
+    write_file_atomic(&auth_key_path(data_dir.clone()), &private_key_pem, 0o600)?;
+    write_file_atomic(&auth_cert_path(data_dir.clone()), &reg_response.certificate_pem, 0o644)?;
+    write_file_atomic(&ca_cert_path(data_dir.clone()), &reg_response.ca_certificate_pem, 0o644)?;
 
     println!("✓ Registered as agent {}", reg_response.agent_id);
     println!("  Certificate expires: {}", reg_response.expires_at);

@@ -24,6 +24,10 @@ export type ActivationKey = {
      * User-provided key identifier
      */
     key_id: string;
+    /**
+     * Whether or not the key has been used to register an agent
+     */
+    used: boolean;
 };
 
 export type AgentWellKnownResponse = {
@@ -292,6 +296,10 @@ export type PaginatedListActivationKey = {
          * User-provided key identifier
          */
         key_id: string;
+        /**
+         * Whether or not the key has been used to register an agent
+         */
+        used: boolean;
     }>;
     /**
      * The maximum number of results to return.
@@ -391,6 +399,9 @@ export type PaginatedListHost = {
     next_token?: string | null;
 };
 
+/**
+ * Request body for agent registration.
+ */
 export type RegisterAgentRequest = {
     /**
      * CSR in PEM format
@@ -402,6 +413,9 @@ export type RegisterAgentRequest = {
     hostname: string;
 };
 
+/**
+ * Response body for a successful agent registration.
+ */
 export type RegisterAgentResponse = {
     /**
      * Agent UUID (ObjectId as hex string)

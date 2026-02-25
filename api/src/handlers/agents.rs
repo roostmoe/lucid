@@ -3,43 +3,18 @@ use axum::{
     extract::State,
     http::{HeaderMap, StatusCode, header},
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
-use lucid_common::caller::Caller;
+use lucid_common::{caller::Caller, params::RegisterAgentRequest, views::RegisterAgentResponse};
 use lucid_db::{
     models::{DbAgent, DbHost, OperatingSystem},
     storage::{ActivationKeyStore, AgentStore, HostStore},
 };
 use mongodb::bson::oid::ObjectId;
-use serde::{Deserialize, Serialize};
 use tracing::{debug, info, instrument};
-use utoipa::ToSchema;
 use x509_parser::prelude::*;
 
 use crate::{auth::jwt::ActivationKeyClaims, context::ApiContext, error::ApiError};
-
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct RegisterAgentRequest {
-    /// CSR in PEM format
-    pub csr_pem: String,
-    /// Hostname of the agent
-    pub hostname: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct RegisterAgentResponse {
-    /// Agent UUID (ObjectId as hex string)
-    pub agent_id: String,
-    /// Signed certificate in PEM format
-    pub certificate_pem: String,
-    /// CA certificate in PEM format
-    pub ca_certificate_pem: String,
-    /// Certificate expiration time
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub expires_at: DateTime<Utc>,
-    /// API base URL for future requests
-    pub api_base_url: String,
-}
 
 /// POST /api/v1/agents/register
 ///

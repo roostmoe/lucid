@@ -5,6 +5,7 @@ use axum::{
 };
 use lucid_common::views::{Ca, PaginatedList};
 use lucid_db::{models::DbCa, storage::CaStore};
+use mongodb::bson::oid::ObjectId;
 use pem_rfc7468::decode_vec;
 use rcgen::{CertificateParams, KeyPair};
 use serde::Deserialize;
@@ -129,14 +130,22 @@ pub async fn import_ca(
 
     let encryption_key = get_encryption_key()?;
 
-    let encrypted_private_key =
-        crate::crypto::aes::encrypt(&encryption_key, req.private_key_pem.as_bytes(), b"")
-            .map_err(|e| anyhow::anyhow!("Failed to encrypt private key: {e}"))?;
+    // Pre-generate the ObjectId so we can bind the encrypted key to this
+    // specific CA record via AAD (prevents ciphertext transplantation).
+    let ca_id = ObjectId::new();
+    let aad = ca_id.to_hex();
+
+    let encrypted_private_key = crate::crypto::aes::encrypt(
+        &encryption_key,
+        req.private_key_pem.as_bytes(),
+        aad.as_bytes(),
+    )
+    .map_err(|e| anyhow::anyhow!("Failed to encrypt private key: {e}"))?;
 
     drop(key_pair);
 
     let db_ca = DbCa {
-        id: None,
+        id: Some(ca_id),
         cert_pem: req.cert_pem,
         encrypted_private_key,
         created_at: chrono::Utc::now(),

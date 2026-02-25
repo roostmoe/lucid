@@ -878,6 +878,7 @@
           "id",
           "key_id",
           "description",
+          "used",
           "created_at"
         ],
         "properties": {
@@ -897,6 +898,10 @@
           "key_id": {
             "type": "string",
             "description": "User-provided key identifier"
+          },
+          "used": {
+            "type": "boolean",
+            "description": "Whether or not the key has been used to register an agent"
           }
         }
       },
@@ -1314,6 +1319,7 @@
                 "id",
                 "key_id",
                 "description",
+                "used",
                 "created_at"
               ],
               "properties": {
@@ -1333,6 +1339,10 @@
                 "key_id": {
                   "type": "string",
                   "description": "User-provided key identifier"
+                },
+                "used": {
+                  "type": "boolean",
+                  "description": "Whether or not the key has been used to register an agent"
                 }
               }
             }
@@ -1502,6 +1512,7 @@
       },
       "RegisterAgentRequest": {
         "type": "object",
+        "description": "Request body for agent registration.",
         "required": [
           "csr_pem",
           "hostname"
@@ -1519,6 +1530,7 @@
       },
       "RegisterAgentResponse": {
         "type": "object",
+        "description": "Response body for a successful agent registration.",
         "required": [
           "agent_id",
           "certificate_pem",

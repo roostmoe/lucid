@@ -3,6 +3,9 @@
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
+mod agent;
+pub use agent::*;
+
 mod auth;
 pub use auth::*;
 

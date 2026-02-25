@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 mod config;
@@ -9,6 +11,9 @@ mod register;
 pub struct Args {
     #[command(subcommand)]
     command: Command,
+
+    #[arg(long, short, global = true, env = "LUCID_AGENT_DATA_DIR", help = "Override default data directory (for testing)", default_value = "/var/lib/lucid/agent")]
+    data_dir: PathBuf,
 }
 
 #[derive(Subcommand)]
@@ -35,17 +40,17 @@ async fn main() -> anyhow::Result<()> {
             // Future: run the agent daemon
             Ok(())
         }
-        Command::Register { token } => register::register(&token).await,
-        Command::Unregister => unregister(),
+        Command::Register { token } => register::register(&token, args.data_dir).await,
+        Command::Unregister => unregister(args.data_dir),
     }
 }
 
-fn unregister() -> anyhow::Result<()> {
+fn unregister(data_dir: PathBuf) -> anyhow::Result<()> {
     use crate::config::{auth_cert_path, auth_key_path, ca_cert_path};
 
     let mut removed = false;
 
-    for path in [auth_key_path(), auth_cert_path(), ca_cert_path()] {
+    for path in [auth_key_path(data_dir.clone()), auth_cert_path(data_dir.clone()), ca_cert_path(data_dir.clone())] {
         if path.exists() {
             std::fs::remove_file(&path)?;
             println!("Removed: {}", path.display());
