@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthWhoamiData, AuthWhoamiErrors, AuthWhoamiResponses, CreateActivationKeyData, CreateActivationKeyErrors, CreateActivationKeyResponses, DeleteActivationKeyData, DeleteActivationKeyErrors, DeleteActivationKeyResponses, GetActivationKeyData, GetActivationKeyErrors, GetActivationKeyResponses, GetHostData, GetHostErrors, GetHostResponses, GetJwksData, GetJwksErrors, GetJwksResponses, ListActivationKeysData, ListActivationKeysErrors, ListActivationKeysResponses, ListHostsData, ListHostsErrors, ListHostsResponses } from './types.gen';
+import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthWhoamiData, AuthWhoamiErrors, AuthWhoamiResponses, CreateActivationKeyData, CreateActivationKeyErrors, CreateActivationKeyResponses, DeleteActivationKeyData, DeleteActivationKeyErrors, DeleteActivationKeyResponses, DeleteCaData, DeleteCaErrors, DeleteCaResponses, GenerateCaData, GenerateCaErrors, GenerateCaResponses, GetActivationKeyData, GetActivationKeyErrors, GetActivationKeyResponses, GetAgentWellKnownData, GetAgentWellKnownErrors, GetAgentWellKnownResponses, GetCaData, GetCaErrors, GetCaResponses, GetHostData, GetHostErrors, GetHostResponses, GetJwksData, GetJwksErrors, GetJwksResponses, GetOpenidConfigurationData, GetOpenidConfigurationErrors, GetOpenidConfigurationResponses, GetServerWellKnownData, GetServerWellKnownErrors, GetServerWellKnownResponses, ImportCaData, ImportCaErrors, ImportCaResponses, ListActivationKeysData, ListActivationKeysErrors, ListActivationKeysResponses, ListCasData, ListCasErrors, ListCasResponses, ListHostsData, ListHostsErrors, ListHostsResponses, RegisterAgentData, RegisterAgentErrors, RegisterAgentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -54,6 +54,50 @@ export const getJwks = <ThrowOnError extends boolean = false>(options?: Options<
     ...options
 });
 
+/**
+ * GET /.well-known/lucid/agent
+ * Returns CA certificate information for agents.
+ */
+export const getAgentWellKnown = <ThrowOnError extends boolean = false>(options?: Options<GetAgentWellKnownData, ThrowOnError>) => (options?.client ?? client).get<GetAgentWellKnownResponses, GetAgentWellKnownErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/.well-known/lucid/agent',
+    ...options
+});
+
+/**
+ * GET /.well-known/lucid/agent
+ * Returns CA certificate information for agents.
+ */
+export const getServerWellKnown = <ThrowOnError extends boolean = false>(options?: Options<GetServerWellKnownData, ThrowOnError>) => (options?.client ?? client).get<GetServerWellKnownResponses, GetServerWellKnownErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/.well-known/lucid/server',
+    ...options
+});
+
+/**
+ * OpenID Connect discovery endpoint.
+ *
+ * Returns minimal OIDC configuration needed for JWT verification.
+ * Only includes `jwks_uri` pointing to the JWKS endpoint.
+ *
+ * # Example
+ *
+ * ```bash
+ * curl http://localhost:4000/.well-known/openid-configuration
+ * ```
+ *
+ * ```json
+ * {
+ * "jwks_uri": "http://localhost:4000/.well-known/jwks.json"
+ * }
+ * ```
+ */
+export const getOpenidConfiguration = <ThrowOnError extends boolean = false>(options?: Options<GetOpenidConfigurationData, ThrowOnError>) => (options?.client ?? client).get<GetOpenidConfigurationResponses, GetOpenidConfigurationErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/.well-known/openid-configuration',
+    ...options
+});
+
 export const listActivationKeys = <ThrowOnError extends boolean = false>(options?: Options<ListActivationKeysData, ThrowOnError>) => (options?.client ?? client).get<ListActivationKeysResponses, ListActivationKeysErrors, ThrowOnError>({
     responseType: 'json',
     url: '/api/v1/activation-keys',
@@ -76,6 +120,21 @@ export const getActivationKey = <ThrowOnError extends boolean = false>(options: 
     responseType: 'json',
     url: '/api/v1/activation-keys/{id}',
     ...options
+});
+
+/**
+ * POST /api/v1/agents/register
+ *
+ * Register a new agent using an activation key JWT.
+ */
+export const registerAgent = <ThrowOnError extends boolean = false>(options: Options<RegisterAgentData, ThrowOnError>) => (options.client ?? client).post<RegisterAgentResponses, RegisterAgentErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/agents/register',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 /**
@@ -195,6 +254,42 @@ export const authLogout = <ThrowOnError extends boolean = false>(options?: Optio
 export const authWhoami = <ThrowOnError extends boolean = false>(options?: Options<AuthWhoamiData, ThrowOnError>) => (options?.client ?? client).get<AuthWhoamiResponses, AuthWhoamiErrors, ThrowOnError>({
     responseType: 'json',
     url: '/api/v1/auth/me',
+    ...options
+});
+
+export const listCas = <ThrowOnError extends boolean = false>(options?: Options<ListCasData, ThrowOnError>) => (options?.client ?? client).get<ListCasResponses, ListCasErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/cas',
+    ...options
+});
+
+/**
+ * Generate a new self-signed Ed25519 CA certificate and store it.
+ */
+export const generateCa = <ThrowOnError extends boolean = false>(options?: Options<GenerateCaData, ThrowOnError>) => (options?.client ?? client).post<GenerateCaResponses, GenerateCaErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/cas',
+    ...options
+});
+
+/**
+ * Import an existing CA certificate and private key.
+ */
+export const importCa = <ThrowOnError extends boolean = false>(options: Options<ImportCaData, ThrowOnError>) => (options.client ?? client).post<ImportCaResponses, ImportCaErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/cas/import',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const deleteCa = <ThrowOnError extends boolean = false>(options: Options<DeleteCaData, ThrowOnError>) => (options.client ?? client).delete<DeleteCaResponses, DeleteCaErrors, ThrowOnError>({ url: '/api/v1/cas/{id}', ...options });
+
+export const getCa = <ThrowOnError extends boolean = false>(options: Options<GetCaData, ThrowOnError>) => (options.client ?? client).get<GetCaResponses, GetCaErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/v1/cas/{id}',
     ...options
 });
 

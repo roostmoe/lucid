@@ -14,6 +14,7 @@ import { Route as ConsoleIndexRouteImport } from './routes/_console/index'
 import { Route as authAuthRouteImport } from './routes/(auth)/_auth'
 import { Route as ConsoleHostsIndexRouteImport } from './routes/_console/hosts/index'
 import { Route as ConsoleActivationKeysIndexRouteImport } from './routes/_console/activation-keys/index'
+import { Route as ConsoleAdminCertificateAuthoritiesIndexRouteImport } from './routes/_console/admin/certificate-authorities/index'
 import { Route as authAuthAuthLoginRouteImport } from './routes/(auth)/_auth/auth.login'
 
 const ConsoleRoute = ConsoleRouteImport.update({
@@ -40,6 +41,12 @@ const ConsoleActivationKeysIndexRoute =
     path: '/activation-keys/',
     getParentRoute: () => ConsoleRoute,
   } as any)
+const ConsoleAdminCertificateAuthoritiesIndexRoute =
+  ConsoleAdminCertificateAuthoritiesIndexRouteImport.update({
+    id: '/admin/certificate-authorities/',
+    path: '/admin/certificate-authorities/',
+    getParentRoute: () => ConsoleRoute,
+  } as any)
 const authAuthAuthLoginRoute = authAuthAuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
@@ -51,12 +58,14 @@ export interface FileRoutesByFullPath {
   '/activation-keys/': typeof ConsoleActivationKeysIndexRoute
   '/hosts/': typeof ConsoleHostsIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
+  '/admin/certificate-authorities/': typeof ConsoleAdminCertificateAuthoritiesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ConsoleIndexRoute
   '/activation-keys': typeof ConsoleActivationKeysIndexRoute
   '/hosts': typeof ConsoleHostsIndexRoute
   '/auth/login': typeof authAuthAuthLoginRoute
+  '/admin/certificate-authorities': typeof ConsoleAdminCertificateAuthoritiesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,12 +75,23 @@ export interface FileRoutesById {
   '/_console/activation-keys/': typeof ConsoleActivationKeysIndexRoute
   '/_console/hosts/': typeof ConsoleHostsIndexRoute
   '/(auth)/_auth/auth/login': typeof authAuthAuthLoginRoute
+  '/_console/admin/certificate-authorities/': typeof ConsoleAdminCertificateAuthoritiesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/activation-keys/' | '/hosts/' | '/auth/login'
+  fullPaths:
+    | '/'
+    | '/activation-keys/'
+    | '/hosts/'
+    | '/auth/login'
+    | '/admin/certificate-authorities/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/activation-keys' | '/hosts' | '/auth/login'
+  to:
+    | '/'
+    | '/activation-keys'
+    | '/hosts'
+    | '/auth/login'
+    | '/admin/certificate-authorities'
   id:
     | '__root__'
     | '/_console'
@@ -80,6 +100,7 @@ export interface FileRouteTypes {
     | '/_console/activation-keys/'
     | '/_console/hosts/'
     | '/(auth)/_auth/auth/login'
+    | '/_console/admin/certificate-authorities/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -124,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleActivationKeysIndexRouteImport
       parentRoute: typeof ConsoleRoute
     }
+    '/_console/admin/certificate-authorities/': {
+      id: '/_console/admin/certificate-authorities/'
+      path: '/admin/certificate-authorities'
+      fullPath: '/admin/certificate-authorities/'
+      preLoaderRoute: typeof ConsoleAdminCertificateAuthoritiesIndexRouteImport
+      parentRoute: typeof ConsoleRoute
+    }
     '/(auth)/_auth/auth/login': {
       id: '/(auth)/_auth/auth/login'
       path: '/auth/login'
@@ -138,12 +166,15 @@ interface ConsoleRouteChildren {
   ConsoleIndexRoute: typeof ConsoleIndexRoute
   ConsoleActivationKeysIndexRoute: typeof ConsoleActivationKeysIndexRoute
   ConsoleHostsIndexRoute: typeof ConsoleHostsIndexRoute
+  ConsoleAdminCertificateAuthoritiesIndexRoute: typeof ConsoleAdminCertificateAuthoritiesIndexRoute
 }
 
 const ConsoleRouteChildren: ConsoleRouteChildren = {
   ConsoleIndexRoute: ConsoleIndexRoute,
   ConsoleActivationKeysIndexRoute: ConsoleActivationKeysIndexRoute,
   ConsoleHostsIndexRoute: ConsoleHostsIndexRoute,
+  ConsoleAdminCertificateAuthoritiesIndexRoute:
+    ConsoleAdminCertificateAuthoritiesIndexRoute,
 }
 
 const ConsoleRouteWithChildren =

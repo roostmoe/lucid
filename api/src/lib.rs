@@ -14,6 +14,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod crypto;
 pub mod server;
 
 pub(crate) mod context;

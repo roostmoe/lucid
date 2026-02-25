@@ -4,7 +4,8 @@ use lucid_db::storage::{Storage, mongodb::MongoDBStorage};
 
 use crate::{
     auth::{
-        AuthManager,
+        ActivationKeyAuthProvider, AuthManager, CertificateAuthority, MtlsAuthProvider,
+        encrypted_ca::EncryptedCa,
         providers::session::SessionAuthProvider,
         signing::{Ed25519Signer, SessionSigner},
     },
@@ -17,6 +18,7 @@ pub struct ApiContext {
     pub db: Arc<dyn Storage>,
     pub auth_manager: Arc<AuthManager>,
     pub session_signer: SessionSigner<Ed25519Signer>,
+    pub ca: Option<Arc<dyn CertificateAuthority>>,
 }
 
 impl ApiContext {
@@ -30,16 +32,33 @@ impl ApiContext {
         let session_signer = SessionSigner::new(ed25519_signer);
 
         // Wire up auth providers
-        let auth_manager = AuthManager::new().with_provider(SessionAuthProvider::new(
-            session_signer.clone(),
-            Arc::clone(&db),
-        ));
+        // mTLS is tried first (for agent connections), then session (for web console)
+        let auth_manager = AuthManager::new()
+            .with_provider(ActivationKeyAuthProvider::new(
+                Arc::clone(&db),
+                config.public_url.clone(),
+                session_signer.clone(),
+            ))
+            .with_provider(MtlsAuthProvider::new(Arc::clone(&db)))
+            .with_provider(SessionAuthProvider::new(
+                session_signer.clone(),
+                Arc::clone(&db),
+            ));
+
+        // Initialize CA if encryption key is available
+        let ca: Option<Arc<dyn CertificateAuthority>> =
+            if let Ok(encryption_key) = EncryptedCa::encryption_key_from_env() {
+                Some(Arc::new(EncryptedCa::new(Arc::clone(&db), encryption_key)))
+            } else {
+                None
+            };
 
         Ok(Self {
             _config: config,
             db,
             auth_manager: Arc::new(auth_manager),
             session_signer,
+            ca,
         })
     }
 }

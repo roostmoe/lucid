@@ -58,6 +58,7 @@ pub async fn create_activation_key(
         id: None,
         key_id: req.key_id,
         description: req.description,
+        used_by_agent_id: None,
     };
 
     let created = ActivationKeyStore::create(&*ctx.db, caller, db_key).await?;
@@ -70,15 +71,14 @@ pub async fn create_activation_key(
     // Generate JWT
     let pem = ctx._config.get_signing_key_pem()?;
 
-    let token =
-        generate_activation_key_jwt(
-            ctx.session_signer.inner().clone(),
-            &pem,
-            &ctx._config.public_url,
-            &created.key_id,
-            &internal_id,
-        )
-            .map_err(|e| anyhow::anyhow!(e))?;
+    let token = generate_activation_key_jwt(
+        ctx.session_signer.inner().clone(),
+        &pem,
+        &ctx._config.public_url,
+        &created.key_id,
+        &internal_id,
+    )
+    .map_err(|e| anyhow::anyhow!(e))?;
 
     let key: ActivationKey = created.into();
 

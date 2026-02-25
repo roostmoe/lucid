@@ -67,14 +67,12 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .layer(
             CorsLayer::new()
                 .allow_credentials(true)
-                .allow_origin(
-                    AllowOrigin::predicate(move |origin, request_parts| {
-                        if request_parts.uri.path().starts_with("/.well-known") {
-                            return true
-                        }
-                        origin.as_bytes().starts_with(cors_public_url.as_bytes())
-                    })
-                ),
+                .allow_origin(AllowOrigin::predicate(move |origin, request_parts| {
+                    if request_parts.uri.path().starts_with("/.well-known") {
+                        return true;
+                    }
+                    origin.as_bytes().starts_with(cors_public_url.as_bytes())
+                })),
         )
         .layer(PropagateRequestIdLayer::new(x_request_id));
 
@@ -105,6 +103,12 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::activation_keys::list_activation_keys))
         .routes(routes!(handlers::activation_keys::get_activation_key))
         .routes(routes!(handlers::activation_keys::delete_activation_key))
+        .routes(routes!(handlers::ca::generate_ca))
+        .routes(routes!(handlers::ca::import_ca))
+        .routes(routes!(handlers::ca::list_cas))
+        .routes(routes!(handlers::ca::get_ca))
+        .routes(routes!(handlers::ca::delete_ca))
+        .routes(routes!(handlers::agents::register_agent))
         .routes(routes!(handlers::auth::auth_login))
         .routes(routes!(handlers::auth::auth_logout))
         .routes(routes!(handlers::auth::auth_whoami))
@@ -112,6 +116,8 @@ pub async fn make(cfg: LucidApiConfig) -> (Router, OpenApi) {
         .routes(routes!(handlers::hosts::get_host))
         .routes(routes!(handlers::jwks::get_jwks))
         .routes(routes!(handlers::jwks::get_openid_configuration))
+        .routes(routes!(handlers::well_known::get_agent_well_known))
+        .routes(routes!(handlers::well_known::get_server_well_known))
         .route("/healthz", get(handlers::health_check))
         .fallback(not_found_handler)
         .layer(middleware)

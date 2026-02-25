@@ -11,6 +11,9 @@ pub use activation_key::*;
 mod auth;
 pub use auth::*;
 
+mod ca;
+pub use ca::*;
+
 mod host;
 pub use host::*;
 

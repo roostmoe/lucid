@@ -18,7 +18,7 @@
 //!     id: "user123".into(),
 //!     display_name: "Alice".into(),
 //!     email: "alice@example.com".into(),
-//!     roles: vec![Role::Viewer],
+//!     roles: vec![Role::Admin],
 //! };
 //!
 //! // Check permissions
@@ -85,6 +85,23 @@ pub enum Permission {
     ActivationKeysWrite,
     /// Delete activation keys
     ActivationKeysDelete,
+
+    /// View certificate authorities
+    CaRead,
+    /// Create certificate authorities
+    CaWrite,
+    /// Delete certificate authorities
+    CaDelete,
+
+    // Agent-specific permissions
+    /// Submit telemetry data
+    TelemetrySubmit,
+    /// Refresh agent certificate
+    AgentRefresh,
+    /// Read own agent details
+    AgentReadSelf,
+    /// Update own host information
+    HostUpdateSelf,
 }
 
 impl Permission {
@@ -102,6 +119,13 @@ impl Permission {
             Permission::ActivationKeysRead => "activation_keys:read",
             Permission::ActivationKeysWrite => "activation_keys:write",
             Permission::ActivationKeysDelete => "activation_keys:delete",
+            Permission::CaRead => "ca:read",
+            Permission::CaWrite => "ca:write",
+            Permission::CaDelete => "ca:delete",
+            Permission::TelemetrySubmit => "telemetry:submit",
+            Permission::AgentRefresh => "agent:refresh",
+            Permission::AgentReadSelf => "agent:read_self",
+            Permission::HostUpdateSelf => "host:update_self",
         }
     }
 }
@@ -115,6 +139,7 @@ impl Permission {
 ///
 /// - **Admin**: Full access to all resources and operations
 /// - **Viewer**: Read-only access to hosts, users, and service accounts
+/// - **Agent**: Agent-specific permissions for telemetry and self-management
 ///
 /// # Examples
 ///
@@ -134,6 +159,8 @@ pub enum Role {
     Admin,
     /// Read-only access to all resources
     Viewer,
+    /// Agent access - can submit telemetry and manage self
+    Agent,
 }
 
 impl Role {
@@ -143,6 +170,9 @@ impl Role {
                 Permission::ActivationKeysRead,
                 Permission::ActivationKeysWrite,
                 Permission::ActivationKeysDelete,
+                Permission::CaRead,
+                Permission::CaWrite,
+                Permission::CaDelete,
                 Permission::HostsRead,
                 Permission::HostsWrite,
                 Permission::HostsDelete,
@@ -152,12 +182,23 @@ impl Role {
                 Permission::ServiceAccountsRead,
                 Permission::ServiceAccountsWrite,
                 Permission::ServiceAccountsDelete,
+                Permission::TelemetrySubmit,
+                Permission::AgentRefresh,
+                Permission::AgentReadSelf,
+                Permission::HostUpdateSelf,
             ],
             Role::Viewer => &[
                 Permission::ActivationKeysRead,
+                Permission::CaRead,
                 Permission::HostsRead,
                 Permission::UsersRead,
                 Permission::ServiceAccountsRead,
+            ],
+            Role::Agent => &[
+                Permission::TelemetrySubmit,
+                Permission::AgentRefresh,
+                Permission::AgentReadSelf,
+                Permission::HostUpdateSelf,
             ],
         }
     }

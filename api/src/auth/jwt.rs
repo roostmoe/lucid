@@ -88,9 +88,14 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
         let key_id = "test-key-id";
         let internal_id = "internal-abc123";
 
-        let jwt =
-            generate_activation_key_jwt(signer, TEST_PRIVATE_KEY_PEM, public_url, key_id, internal_id)
-                .unwrap();
+        let jwt = generate_activation_key_jwt(
+            signer,
+            TEST_PRIVATE_KEY_PEM,
+            public_url,
+            key_id,
+            internal_id,
+        )
+        .unwrap();
 
         // Extract and decode the payload manually to verify structure
         let parts: Vec<&str> = jwt.split('.').collect();

@@ -8,6 +8,12 @@ pub enum ApiError {
     #[error("Not found")]
     NotFound,
 
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
+
+    #[error("Internal error: {0}")]
+    Internal(String),
+
     #[error(transparent)]
     Storage(#[from] lucid_db::storage::StoreError),
 
@@ -22,6 +28,26 @@ impl ApiError {
     pub fn not_found() -> Self {
         Self::NotFound
     }
+
+    pub fn service_unavailable(msg: impl Into<String>) -> Self {
+        Self::ServiceUnavailable(msg.into())
+    }
+
+    pub fn internal(msg: impl Into<String>) -> Self {
+        Self::Internal(msg.into())
+    }
+
+    pub fn bad_request(msg: impl Into<String>) -> Self {
+        Self::Internal(msg.into())
+    }
+
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        Self::CallerError(CallerError::unauthorized(Some(msg.into())))
+    }
+
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Self::Internal(msg.into())
+    }
 }
 
 impl From<ApiError> for ApiErrorResponse {
@@ -29,6 +55,8 @@ impl From<ApiError> for ApiErrorResponse {
         ApiErrorResponse {
             code: match &err {
                 ApiError::NotFound => Some("NotFound".into()),
+                ApiError::ServiceUnavailable(_) => Some("ServiceUnavailable".into()),
+                ApiError::Internal(_) => Some("InternalError".into()),
                 ApiError::Storage(se) => match se {
                     StoreError::NotFound => Some("NotFound".into()),
                     StoreError::PermissionDenied => Some("Forbidden".into()),
@@ -44,6 +72,8 @@ impl From<ApiError> for ApiErrorResponse {
 
             message: match &err {
                 ApiError::NotFound => "The requested resource was not found.".into(),
+                ApiError::ServiceUnavailable(msg) => msg.clone(),
+                ApiError::Internal(msg) => msg.clone(),
                 ApiError::Storage(se) => match se {
                     StoreError::NotFound => "The requested resource was not found.".into(),
                     StoreError::PermissionDenied => {
@@ -82,6 +112,8 @@ impl IntoResponse for ApiError {
 
         let status_code = match &self {
             Self::NotFound => axum::http::StatusCode::NOT_FOUND,
+            Self::ServiceUnavailable(_) => axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Self::Internal(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Self::Storage(se) => match se {
                 StoreError::NotFound => axum::http::StatusCode::NOT_FOUND,
                 StoreError::PermissionDenied => axum::http::StatusCode::FORBIDDEN,

@@ -1,3 +1,5 @@
+pub mod ca;
+pub mod encrypted_ca;
 pub mod error;
 pub mod extractor;
 pub mod jwt;
@@ -6,9 +8,13 @@ pub mod provider;
 pub mod providers;
 pub mod signing;
 
+pub use ca::{CaError, CaInfo, CertificateAuthority, SignedCertificate};
+pub use encrypted_ca::EncryptedCa;
 pub use error::AuthError;
 pub use extractor::{Auth, RequireAuth};
 pub use manager::AuthManager;
 pub use provider::AuthProvider;
+pub use providers::activation_key::ActivationKeyAuthProvider;
+pub use providers::mtls::MtlsAuthProvider;
 pub use providers::session::SessionAuthProvider;
 pub use signing::SessionSigner;

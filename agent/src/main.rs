@@ -1,62 +1,65 @@
-use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
 use clap::{Parser, Subcommand};
-use serde::{Deserialize, Serialize};
+
+mod config;
+mod crypto;
+mod register;
 
 #[derive(Parser)]
+#[command(name = "lucid-agent")]
 pub struct Args {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Command,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Header {
-    #[serde(rename = "jku")]
-    pub jwks_url: String,
-    #[serde(rename = "kid")]
-    pub key_id: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Claims {
-    #[serde(rename = "iss")]
-    pub issuer: String,
-    #[serde(rename = "ak")]
-    pub key_id: String,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Run the agent daemon
     Run,
+    /// Register this agent with the Lucid API
     Register {
-        /// The registration token provided by the Lucid API for agent registration.
-        #[clap(long, short)]
+        /// Activation key JWT from the Lucid console
+        #[arg(long, short)]
         token: String,
-    }
+    },
+    /// Remove local registration credentials
+    Unregister,
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
         Command::Run => {
             println!("Starting Agent...");
-        },
-        Command::Register { token } => {
-            println!("Registering Agent...");
-            println!("Token: {}", token);
-            let token_parts = token.split('.');
-            let token_header = token_parts.clone().nth(0).expect("Failed to get token header part");
-            let token_claims = token_parts.clone().nth(1).expect("Failed to get token claims part");
-            println!("Token Claims B64: {}", token_claims);
-            let token_header_decoded = BASE64_URL_SAFE_NO_PAD.decode(token_header).expect("Failed to decode token header");
-            let token_claims_decoded = BASE64_URL_SAFE_NO_PAD.decode(token_claims).expect("Failed to decode token claims");
-            let header: Header = serde_json::from_slice(&token_header_decoded).expect("Failed to parse token header");
-            let claims: Claims = serde_json::from_slice(&token_claims_decoded).expect("Failed to parse token claims");
-            println!("Token JWKS URI: {}", header.jwks_url);
-            println!("Token JWKS Key ID: {}", header.key_id);
-            println!("Token Claims Issuer: {}", claims.issuer);
-            println!("Token Claims Key ID: {}", claims.key_id);
-        },
+            // Future: run the agent daemon
+            Ok(())
+        }
+        Command::Register { token } => register::register(&token).await,
+        Command::Unregister => unregister(),
     }
+}
+
+fn unregister() -> anyhow::Result<()> {
+    use crate::config::{auth_cert_path, auth_key_path, ca_cert_path};
+
+    let mut removed = false;
+
+    for path in [auth_key_path(), auth_cert_path(), ca_cert_path()] {
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+            println!("Removed: {}", path.display());
+            removed = true;
+        }
+    }
+
+    if removed {
+        println!("✓ Local credentials removed");
+        println!("  Note: The agent is still registered on the server.");
+        println!("  An admin must revoke it via the API.");
+    } else {
+        println!("No credentials found - agent was not registered.");
+    }
+
+    Ok(())
 }

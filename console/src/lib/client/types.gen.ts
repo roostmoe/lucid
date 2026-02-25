@@ -26,6 +26,11 @@ export type ActivationKey = {
     key_id: string;
 };
 
+export type AgentWellKnownResponse = {
+    cas: Array<CaInfoResponse>;
+    server_version: string;
+};
+
 /**
  * An error response for an API endpoint. This is used to return errors to the
  * client in a consistent format.
@@ -79,6 +84,35 @@ export type AuthLoginResponse = {
      */
     refresh_token: string;
     token_type: 'Bearer';
+};
+
+/**
+ * A certificate authority managed by Lucid.
+ */
+export type Ca = {
+    /**
+     * CA certificate in PEM format
+     */
+    cert_pem: string;
+    /**
+     * When this CA was created
+     */
+    created_at: string;
+    /**
+     * SHA-256 fingerprint of the certificate (format: `sha256:<hex>`)
+     */
+    fingerprint: string;
+    /**
+     * Internal database ID
+     */
+    id: string;
+};
+
+export type CaInfoResponse = {
+    cert_pem: string;
+    expires_at: string;
+    fingerprint: string;
+    issued_at: string;
 };
 
 /**
@@ -143,6 +177,21 @@ export type Host = {
      */
     os_version: string;
     updated_at: string;
+};
+
+/**
+ * Request body for importing an existing certificate authority.
+ */
+export type ImportCaRequest = {
+    /**
+     * PEM-encoded CA certificate.
+     */
+    cert_pem: string;
+    /**
+     * PEM-encoded private key for the CA certificate (will be encrypted at
+     * rest using the server's `LUCID_CA_ENCRYPTION_KEY`).
+     */
+    private_key_pem: string;
 };
 
 /**
@@ -211,6 +260,16 @@ export type NetworkInterface = {
 export type NetworkInterfaceState = 'Up' | 'Down' | 'Unknown';
 
 /**
+ * OpenID Connect discovery response (minimal, for JWT verification only).
+ */
+export type OpenIdConfiguration = {
+    /**
+     * URL to the JWKS endpoint for retrieving public keys.
+     */
+    jwks_uri: string;
+};
+
+/**
  * Parameters for paginating through a list of records. This is used by the
  * various list endpoints to allow clients to paginate through large sets of
  * records.
@@ -233,6 +292,41 @@ export type PaginatedListActivationKey = {
          * User-provided key identifier
          */
         key_id: string;
+    }>;
+    /**
+     * The maximum number of results to return.
+     */
+    limit?: number | null;
+    /**
+     * The next page token, if any. This is acquired by requesting a paginated
+     * set of records and looking at the `next_token` or `prev_token` field.
+     */
+    next_token?: string | null;
+};
+
+/**
+ * Parameters for paginating through a list of records. This is used by the
+ * various list endpoints to allow clients to paginate through large sets of
+ * records.
+ */
+export type PaginatedListCa = {
+    items: Array<{
+        /**
+         * CA certificate in PEM format
+         */
+        cert_pem: string;
+        /**
+         * When this CA was created
+         */
+        created_at: string;
+        /**
+         * SHA-256 fingerprint of the certificate (format: `sha256:<hex>`)
+         */
+        fingerprint: string;
+        /**
+         * Internal database ID
+         */
+        id: string;
     }>;
     /**
      * The maximum number of results to return.
@@ -297,6 +391,40 @@ export type PaginatedListHost = {
     next_token?: string | null;
 };
 
+export type RegisterAgentRequest = {
+    /**
+     * CSR in PEM format
+     */
+    csr_pem: string;
+    /**
+     * Hostname of the agent
+     */
+    hostname: string;
+};
+
+export type RegisterAgentResponse = {
+    /**
+     * Agent UUID (ObjectId as hex string)
+     */
+    agent_id: string;
+    /**
+     * API base URL for future requests
+     */
+    api_base_url: string;
+    /**
+     * CA certificate in PEM format
+     */
+    ca_certificate_pem: string;
+    /**
+     * Signed certificate in PEM format
+     */
+    certificate_pem: string;
+    /**
+     * Certificate expiration time
+     */
+    expires_at: string;
+};
+
 export type User = {
     created_at: string;
     /**
@@ -357,6 +485,142 @@ export type GetJwksResponses = {
 };
 
 export type GetJwksResponse = GetJwksResponses[keyof GetJwksResponses];
+
+export type GetAgentWellKnownData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/.well-known/lucid/agent';
+};
+
+export type GetAgentWellKnownErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+    /**
+     * CA not initialized
+     */
+    503: unknown;
+};
+
+export type GetAgentWellKnownResponses = {
+    /**
+     * Agent configuration
+     */
+    200: AgentWellKnownResponse;
+};
+
+export type GetAgentWellKnownResponse = GetAgentWellKnownResponses[keyof GetAgentWellKnownResponses];
+
+export type GetServerWellKnownData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/.well-known/lucid/server';
+};
+
+export type GetServerWellKnownErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type GetServerWellKnownResponses = {
+    /**
+     * Server configuration
+     */
+    200: AgentWellKnownResponse;
+};
+
+export type GetServerWellKnownResponse = GetServerWellKnownResponses[keyof GetServerWellKnownResponses];
+
+export type GetOpenidConfigurationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/.well-known/openid-configuration';
+};
+
+export type GetOpenidConfigurationErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type GetOpenidConfigurationResponses = {
+    /**
+     * OpenID Connect discovery document
+     */
+    200: OpenIdConfiguration;
+};
+
+export type GetOpenidConfigurationResponse = GetOpenidConfigurationResponses[keyof GetOpenidConfigurationResponses];
 
 export type ListActivationKeysData = {
     body?: never;
@@ -538,6 +802,58 @@ export type GetActivationKeyResponses = {
 
 export type GetActivationKeyResponse = GetActivationKeyResponses[keyof GetActivationKeyResponses];
 
+export type RegisterAgentData = {
+    body: RegisterAgentRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/register';
+};
+
+export type RegisterAgentErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * Activation key already used
+     */
+    409: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+    /**
+     * CA not initialized
+     */
+    503: unknown;
+};
+
+export type RegisterAgentResponses = {
+    /**
+     * Agent registered successfully
+     */
+    200: RegisterAgentResponse;
+};
+
+export type RegisterAgentResponse2 = RegisterAgentResponses[keyof RegisterAgentResponses];
+
 export type AuthLoginData = {
     body: AuthLoginParams;
     path?: never;
@@ -667,6 +983,230 @@ export type AuthWhoamiResponses = {
 };
 
 export type AuthWhoamiResponse = AuthWhoamiResponses[keyof AuthWhoamiResponses];
+
+export type ListCasData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/cas';
+};
+
+export type ListCasErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type ListCasResponses = {
+    /**
+     * List of certificate authorities
+     */
+    200: PaginatedListCa;
+};
+
+export type ListCasResponse = ListCasResponses[keyof ListCasResponses];
+
+export type GenerateCaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/cas';
+};
+
+export type GenerateCaErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type GenerateCaResponses = {
+    /**
+     * Certificate authority generated
+     */
+    201: Ca;
+};
+
+export type GenerateCaResponse = GenerateCaResponses[keyof GenerateCaResponses];
+
+export type ImportCaData = {
+    body: ImportCaRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/cas/import';
+};
+
+export type ImportCaErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type ImportCaResponses = {
+    /**
+     * Certificate authority imported
+     */
+    201: Ca;
+};
+
+export type ImportCaResponse = ImportCaResponses[keyof ImportCaResponses];
+
+export type DeleteCaData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/cas/{id}';
+};
+
+export type DeleteCaErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type DeleteCaResponses = {
+    /**
+     * Certificate authority deleted
+     */
+    204: void;
+};
+
+export type DeleteCaResponse = DeleteCaResponses[keyof DeleteCaResponses];
+
+export type GetCaData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/cas/{id}';
+};
+
+export type GetCaErrors = {
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    400: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    401: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    403: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    404: unknown;
+    /**
+     * An error response for an API endpoint. This is used to return errors to the
+     * client in a consistent format.
+     */
+    500: unknown;
+};
+
+export type GetCaResponses = {
+    /**
+     * Certificate authority details
+     */
+    200: Ca;
+};
+
+export type GetCaResponse = GetCaResponses[keyof GetCaResponses];
 
 export type ListHostsData = {
     body?: never;

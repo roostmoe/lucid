@@ -9,7 +9,7 @@ use lucid_common::{
 };
 use thiserror::Error;
 
-use crate::models::{DbActivationKey, DbHost, DbSession, DbUser};
+use crate::models::{DbActivationKey, DbAgent, DbCa, DbHost, DbSession, DbUser};
 
 pub mod mongodb;
 
@@ -36,7 +36,15 @@ pub enum StoreError {
 
 #[async_trait]
 pub trait Storage:
-    UserStore + SessionStore + HostStore + ActivationKeyStore + Send + Sync + 'static
+    UserStore
+    + SessionStore
+    + HostStore
+    + ActivationKeyStore
+    + AgentStore
+    + CaStore
+    + Send
+    + Sync
+    + 'static
 {
     async fn ping(&self) -> Result<(), StoreError>;
 }
@@ -140,5 +148,30 @@ pub trait ActivationKeyStore {
         caller: Caller,
         key: DbActivationKey,
     ) -> Result<DbActivationKey, StoreError>;
+    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError>;
+    async fn mark_as_used(&self, key_id: ObjectId, agent_id: ObjectId) -> Result<(), StoreError>;
+    async fn is_used(&self, key_id: ObjectId) -> Result<bool, StoreError>;
+    async fn get_by_internal_id(
+        &self,
+        internal_id: &str,
+    ) -> Result<Option<DbActivationKey>, StoreError>;
+}
+
+#[async_trait]
+pub trait AgentStore {
+    async fn create(&self, agent: DbAgent) -> Result<DbAgent, StoreError>;
+    async fn get(&self, id: ObjectId) -> Result<Option<DbAgent>, StoreError>;
+    async fn get_by_public_key(&self, public_key_pem: &str) -> Result<Option<DbAgent>, StoreError>;
+    async fn update(&self, agent: DbAgent) -> Result<DbAgent, StoreError>;
+    async fn update_last_seen(&self, id: ObjectId) -> Result<(), StoreError>;
+    async fn soft_delete(&self, id: ObjectId) -> Result<(), StoreError>;
+    async fn hard_delete(&self, id: ObjectId) -> Result<(), StoreError>;
+}
+
+#[async_trait]
+pub trait CaStore: Send + Sync {
+    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbCa>, StoreError>;
+    async fn list(&self, caller: Caller) -> Result<Vec<DbCa>, StoreError>;
+    async fn create(&self, caller: Caller, ca: DbCa) -> Result<DbCa, StoreError>;
     async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError>;
 }

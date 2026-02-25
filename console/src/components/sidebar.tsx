@@ -1,11 +1,14 @@
 import { useAuth } from "@/lib/state/auth";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarTrigger } from "./ui/sidebar";
-import { IconBox, IconChecklist, IconDashboard, IconDatabase, IconExclamationCircle, IconKey, IconLogout, IconServer, IconTriangle, type Icon } from "@tabler/icons-react";
+import { IconBox, IconCertificate, IconChecklist, IconDashboard, IconDatabase, IconExclamationCircle, IconKey, IconLogout, IconServer, IconTriangle, type Icon } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { PropsWithChildren } from "react";
 import { Badge } from "./ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { getServerWellKnownOptions } from "@/lib/client/@tanstack/react-query.gen";
+import { Skeleton } from "./ui/skeleton";
 
 type AppSidebarItem = {
   type: 'group';
@@ -102,9 +105,23 @@ const sidebarItems = [
       },
     ],
   },
+  {
+    type: 'group',
+    title: 'Admin',
+    items: [
+      {
+        type: 'item',
+        title: 'Certificate Authorities',
+        url: '/admin/certificate-authorities',
+        icon: IconCertificate,
+      },
+    ],
+  },
 ] as AppSidebarItem[];
 
 export const AppSidebar = () => {
+  const { isLoading, data: serverInfo } = useQuery({ ...getServerWellKnownOptions() });
+
   return (
     <Sidebar variant="inset">
       <SidebarHeader>
@@ -117,6 +134,17 @@ export const AppSidebar = () => {
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">Lucid</span>
+                  {!isLoading && serverInfo
+                    ? <span className="truncate text-muted-foreground text-sm">v{serverInfo.server_version}</span>
+                    : isLoading
+                      ? <Skeleton className="w-16 h-4" />
+                      : (
+                          <div className="text-destructive flex items-center gap-1">
+                            <IconExclamationCircle />
+                            Unknown Version
+                          </div>
+                      )
+                  }
                 </div>
               </a>
             )} />

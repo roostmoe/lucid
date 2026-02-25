@@ -20,10 +20,10 @@ use mongodb::{
 use tracing::{info, instrument};
 
 use crate::{
-    models::{DbActivationKey, DbHost, DbSession, DbUser},
+    models::{DbActivationKey, DbAgent, DbCa, DbHost, DbSession, DbUser},
     storage::{
-        ActivationKeyFilter, ActivationKeyStore, HostFilter, HostStore, SessionStore, Storage,
-        StoreError, UserFilter, UserStore,
+        ActivationKeyFilter, ActivationKeyStore, AgentStore, CaStore, HostFilter, HostStore,
+        SessionStore, Storage, StoreError, UserFilter, UserStore,
     },
 };
 
@@ -124,6 +124,43 @@ impl MongoDBStorage {
             )
             .await?;
 
+        // Agents collection indexes
+        let agents_collection = self.get_db().collection::<()>(MONGODB_COLLECTION_AGENTS);
+
+        // Unique index on host_id (1:1 relationship)
+        agents_collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"host_id": 1})
+                    .options(IndexOptions::builder().unique(true).build())
+                    .build(),
+            )
+            .await?;
+
+        // Index on cert_expires_at for finding expiring certs
+        agents_collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"cert_expires_at": 1})
+                    .build(),
+            )
+            .await?;
+
+        // Index on public_key_pem for lookups during auth
+        agents_collection
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {"public_key_pem": 1})
+                    .options(IndexOptions::builder().unique(true).build())
+                    .build(),
+            )
+            .await?;
+
+        // Index on revoked_at for filtering out revoked agents
+        agents_collection
+            .create_index(IndexModel::builder().keys(doc! {"revoked_at": 1}).build())
+            .await?;
+
         Ok(())
     }
 }
@@ -145,6 +182,8 @@ pub const MONGODB_COLLECTION_USERS: &str = "users";
 pub const MONGODB_COLLECTION_SESSIONS: &str = "console_sessions";
 pub const MONGODB_COLLECTION_INVENTORY_HOSTS: &str = "inventory_hosts";
 pub const MONGODB_COLLECTION_ACTIVATION_KEYS: &str = "activation_keys";
+pub const MONGODB_COLLECTION_AGENTS: &str = "agents";
+pub const MONGODB_COLLECTION_CA: &str = "ca";
 
 #[async_trait]
 impl UserStore for MongoDBStorage {
@@ -666,6 +705,218 @@ impl ActivationKeyStore for MongoDBStorage {
             .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
 
         collection.delete_one(doc! {"_id": object_id}).await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn mark_as_used(&self, key_id: ObjectId, agent_id: ObjectId) -> Result<(), StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
+
+        collection
+            .update_one(
+                doc! {"_id": key_id},
+                doc! {"$set": {"used_by_agent_id": agent_id}},
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn is_used(&self, key_id: ObjectId) -> Result<bool, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
+
+        let key = collection.find_one(doc! {"_id": key_id}).await?;
+
+        Ok(key.and_then(|k| k.used_by_agent_id).is_some())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn get_by_internal_id(
+        &self,
+        internal_id: &str,
+    ) -> Result<Option<DbActivationKey>, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
+
+        let key = collection.find_one(doc! {"key_id": internal_id}).await?;
+
+        Ok(key)
+    }
+}
+
+#[async_trait]
+impl AgentStore for MongoDBStorage {
+    #[instrument(skip(self, agent), err(Debug))]
+    async fn create(&self, agent: DbAgent) -> Result<DbAgent, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        let insert_result = collection.insert_one(&agent).await?;
+
+        Ok(DbAgent {
+            id: insert_result.inserted_id.as_object_id(),
+            ..agent
+        })
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn get(&self, id: ObjectId) -> Result<Option<DbAgent>, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        let agent = collection.find_one(doc! {"_id": id}).await?;
+
+        Ok(agent)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn get_by_public_key(&self, public_key_pem: &str) -> Result<Option<DbAgent>, StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        let agent = collection
+            .find_one(doc! {"public_key_pem": public_key_pem})
+            .await?;
+
+        Ok(agent)
+    }
+
+    #[instrument(skip(self, agent), err(Debug))]
+    async fn update(&self, agent: DbAgent) -> Result<DbAgent, StoreError> {
+        let id = agent.id.ok_or_else(|| StoreError::NotFound)?;
+
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        let bson_cert_issued_at = BsonDateTime::from_chrono(agent.cert_issued_at);
+        let bson_cert_expires_at = BsonDateTime::from_chrono(agent.cert_expires_at);
+        let bson_updated_at = BsonDateTime::from_chrono(agent.updated_at);
+
+        collection
+            .update_one(
+                doc! {"_id": id},
+                doc! {
+                    "$set": {
+                        "name": &agent.name,
+                        "certificate_pem": &agent.certificate_pem,
+                        "cert_issued_at": bson_cert_issued_at,
+                        "cert_expires_at": bson_cert_expires_at,
+                        "updated_at": bson_updated_at,
+                    }
+                },
+            )
+            .await?;
+
+        Ok(agent)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn update_last_seen(&self, id: ObjectId) -> Result<(), StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        let bson_now = BsonDateTime::from_chrono(Utc::now());
+
+        collection
+            .update_one(doc! {"_id": id}, doc! {"$set": {"last_seen_at": bson_now}})
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn soft_delete(&self, id: ObjectId) -> Result<(), StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        let bson_now = BsonDateTime::from_chrono(Utc::now());
+
+        collection
+            .update_one(doc! {"_id": id}, doc! {"$set": {"revoked_at": bson_now}})
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn hard_delete(&self, id: ObjectId) -> Result<(), StoreError> {
+        let collection = self
+            .get_db()
+            .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
+
+        collection.delete_one(doc! {"_id": id}).await?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl CaStore for MongoDBStorage {
+    #[instrument(skip(self), err(Debug))]
+    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbCa>, StoreError> {
+        caller
+            .require(Permission::CaRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let oid = ObjectId::parse_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
+        let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
+        let ca = collection.find_one(doc! { "_id": oid }).await?;
+        Ok(ca)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn list(&self, caller: Caller) -> Result<Vec<DbCa>, StoreError> {
+        caller
+            .require(Permission::CaRead)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
+        let cursor = collection.find(doc! {}).await?;
+        let cas: Vec<DbCa> = cursor.try_collect().await?;
+        Ok(cas)
+    }
+
+    #[instrument(skip(self, ca), err(Debug))]
+    async fn create(&self, caller: Caller, ca: DbCa) -> Result<DbCa, StoreError> {
+        caller
+            .require(Permission::CaWrite)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
+        let insert_result = collection.insert_one(&ca).await?;
+
+        Ok(DbCa {
+            id: insert_result.inserted_id.as_object_id(),
+            ..ca
+        })
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError> {
+        caller
+            .require(Permission::CaDelete)
+            .map_err(|_| StoreError::PermissionDenied)?;
+
+        let oid = ObjectId::parse_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
+        let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
+        let result = collection.delete_one(doc! { "_id": oid }).await?;
+
+        if result.deleted_count == 0 {
+            return Err(StoreError::NotFound);
+        }
 
         Ok(())
     }

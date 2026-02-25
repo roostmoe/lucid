@@ -21,6 +21,10 @@ export default defineConfig({
       '/api': {
         // TODO: Delegate this to an environment variable
         target: 'http://localhost:4000',
+      },
+      '/.well-known': {
+        // TODO: Delegate this to an environment variable
+        target: 'http://localhost:4000',
       }
     }
   },

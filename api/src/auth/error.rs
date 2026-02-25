@@ -14,6 +14,9 @@ pub enum AuthError {
     #[error("CSRF validation failed")]
     CsrfFailed,
 
+    #[error("Internal error: {0}")]
+    Internal(String),
+
     #[error(transparent)]
     Storage(#[from] lucid_db::storage::StoreError),
 

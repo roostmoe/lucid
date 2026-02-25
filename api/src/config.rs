@@ -2,6 +2,25 @@ use clap::Parser;
 use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Clone, Debug, Parser)]
+pub struct TlsConfig {
+    /// Enable TLS for the API server
+    #[clap(long, env = "LUCID_API_TLS_ENABLED", default_value_t = false)]
+    pub enabled: bool,
+
+    /// Path to server TLS certificate (PEM)
+    #[clap(long, env = "LUCID_API_TLS_CERT")]
+    pub cert_path: Option<PathBuf>,
+
+    /// Path to server TLS private key (PEM)
+    #[clap(long, env = "LUCID_API_TLS_KEY")]
+    pub key_path: Option<PathBuf>,
+
+    /// Path to CA certificate for client verification (PEM). If set, enables mTLS.
+    #[clap(long, env = "LUCID_API_TLS_CA_CERT")]
+    pub ca_cert_path: Option<PathBuf>,
+}
+
+#[derive(Clone, Debug, Parser)]
 pub struct LucidApiConfig {
     #[clap(
         short,
@@ -55,6 +74,9 @@ pub struct LucidApiConfig {
     /// Mutually exclusive with `signing_key`.
     #[clap(long, env = "LUCID_API_SIGNING_KEY_FILE")]
     pub signing_key_file: Option<PathBuf>,
+
+    #[clap(flatten)]
+    pub tls: TlsConfig,
 }
 
 impl LucidApiConfig {

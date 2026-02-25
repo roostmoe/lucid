@@ -9,6 +9,12 @@ use lucid_common::{
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
+pub mod agent;
+pub mod ca;
+
+pub use agent::DbAgent;
+pub use ca::DbCa;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbUser {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
@@ -110,6 +116,10 @@ pub struct DbHost {
     /// The operating system information of the host
     pub operating_system: OperatingSystem,
 
+    /// Reference to the agent for this host (optional for backward compatibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<ObjectId>,
+
     /// When the host was last updated manually
     #[serde(with = "FromChrono04DateTime")]
     pub updated_at: DateTime<Utc>,
@@ -164,6 +174,10 @@ pub struct DbActivationKey {
 
     /// The description of this activation key (e.g., "Key for activating new hosts")
     pub description: String,
+
+    /// The agent that used this activation key (if any)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub used_by_agent_id: Option<ObjectId>,
 }
 
 impl DbActivationKey {

@@ -4,8 +4,8 @@ import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanst
 import type { AxiosError } from 'axios';
 
 import { client } from '../client.gen';
-import { authLogin, authLogout, authWhoami, createActivationKey, deleteActivationKey, getActivationKey, getHost, getJwks, listActivationKeys, listHosts, type Options } from '../sdk.gen';
-import type { AuthLoginData, AuthLoginResponse2, AuthLogoutData, AuthWhoamiData, AuthWhoamiResponse, CreateActivationKeyData, CreateActivationKeyResponse2, DeleteActivationKeyData, DeleteActivationKeyResponse, GetActivationKeyData, GetActivationKeyResponse, GetHostData, GetHostResponse, GetJwksData, GetJwksResponse, ListActivationKeysData, ListActivationKeysResponse, ListHostsData, ListHostsResponse } from '../types.gen';
+import { authLogin, authLogout, authWhoami, createActivationKey, deleteActivationKey, deleteCa, generateCa, getActivationKey, getAgentWellKnown, getCa, getHost, getJwks, getOpenidConfiguration, getServerWellKnown, importCa, listActivationKeys, listCas, listHosts, type Options, registerAgent } from '../sdk.gen';
+import type { AuthLoginData, AuthLoginResponse2, AuthLogoutData, AuthWhoamiData, AuthWhoamiResponse, CreateActivationKeyData, CreateActivationKeyResponse2, DeleteActivationKeyData, DeleteActivationKeyResponse, DeleteCaData, DeleteCaResponse, GenerateCaData, GenerateCaResponse, GetActivationKeyData, GetActivationKeyResponse, GetAgentWellKnownData, GetAgentWellKnownResponse, GetCaData, GetCaResponse, GetHostData, GetHostResponse, GetJwksData, GetJwksResponse, GetOpenidConfigurationData, GetOpenidConfigurationResponse, GetServerWellKnownData, GetServerWellKnownResponse, ImportCaData, ImportCaResponse, ListActivationKeysData, ListActivationKeysResponse, ListCasData, ListCasResponse, ListHostsData, ListHostsResponse, RegisterAgentData, RegisterAgentResponse2 } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseURL' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -85,6 +85,77 @@ export const getJwksOptions = (options?: Options<GetJwksData>) => queryOptions<G
     queryKey: getJwksQueryKey(options)
 });
 
+export const getAgentWellKnownQueryKey = (options?: Options<GetAgentWellKnownData>) => createQueryKey('getAgentWellKnown', options);
+
+/**
+ * GET /.well-known/lucid/agent
+ * Returns CA certificate information for agents.
+ */
+export const getAgentWellKnownOptions = (options?: Options<GetAgentWellKnownData>) => queryOptions<GetAgentWellKnownResponse, AxiosError<DefaultError>, GetAgentWellKnownResponse, ReturnType<typeof getAgentWellKnownQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getAgentWellKnown({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getAgentWellKnownQueryKey(options)
+});
+
+export const getServerWellKnownQueryKey = (options?: Options<GetServerWellKnownData>) => createQueryKey('getServerWellKnown', options);
+
+/**
+ * GET /.well-known/lucid/agent
+ * Returns CA certificate information for agents.
+ */
+export const getServerWellKnownOptions = (options?: Options<GetServerWellKnownData>) => queryOptions<GetServerWellKnownResponse, AxiosError<DefaultError>, GetServerWellKnownResponse, ReturnType<typeof getServerWellKnownQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getServerWellKnown({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getServerWellKnownQueryKey(options)
+});
+
+export const getOpenidConfigurationQueryKey = (options?: Options<GetOpenidConfigurationData>) => createQueryKey('getOpenidConfiguration', options);
+
+/**
+ * OpenID Connect discovery endpoint.
+ *
+ * Returns minimal OIDC configuration needed for JWT verification.
+ * Only includes `jwks_uri` pointing to the JWKS endpoint.
+ *
+ * # Example
+ *
+ * ```bash
+ * curl http://localhost:4000/.well-known/openid-configuration
+ * ```
+ *
+ * ```json
+ * {
+ * "jwks_uri": "http://localhost:4000/.well-known/jwks.json"
+ * }
+ * ```
+ */
+export const getOpenidConfigurationOptions = (options?: Options<GetOpenidConfigurationData>) => queryOptions<GetOpenidConfigurationResponse, AxiosError<DefaultError>, GetOpenidConfigurationResponse, ReturnType<typeof getOpenidConfigurationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getOpenidConfiguration({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getOpenidConfigurationQueryKey(options)
+});
+
 export const listActivationKeysQueryKey = (options?: Options<ListActivationKeysData>) => createQueryKey('listActivationKeys', options);
 
 export const listActivationKeysOptions = (options?: Options<ListActivationKeysData>) => queryOptions<ListActivationKeysResponse, AxiosError<DefaultError>, ListActivationKeysResponse, ReturnType<typeof listActivationKeysQueryKey>>({
@@ -142,6 +213,25 @@ export const getActivationKeyOptions = (options: Options<GetActivationKeyData>) 
     },
     queryKey: getActivationKeyQueryKey(options)
 });
+
+/**
+ * POST /api/v1/agents/register
+ *
+ * Register a new agent using an activation key JWT.
+ */
+export const registerAgentMutation = (options?: Partial<Options<RegisterAgentData>>): UseMutationOptions<RegisterAgentResponse2, AxiosError<DefaultError>, Options<RegisterAgentData>> => {
+    const mutationOptions: UseMutationOptions<RegisterAgentResponse2, AxiosError<DefaultError>, Options<RegisterAgentData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await registerAgent({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Authenticate user and create session.
@@ -286,6 +376,84 @@ export const authWhoamiOptions = (options?: Options<AuthWhoamiData>) => queryOpt
         return data;
     },
     queryKey: authWhoamiQueryKey(options)
+});
+
+export const listCasQueryKey = (options?: Options<ListCasData>) => createQueryKey('listCas', options);
+
+export const listCasOptions = (options?: Options<ListCasData>) => queryOptions<ListCasResponse, AxiosError<DefaultError>, ListCasResponse, ReturnType<typeof listCasQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listCas({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listCasQueryKey(options)
+});
+
+/**
+ * Generate a new self-signed Ed25519 CA certificate and store it.
+ */
+export const generateCaMutation = (options?: Partial<Options<GenerateCaData>>): UseMutationOptions<GenerateCaResponse, AxiosError<DefaultError>, Options<GenerateCaData>> => {
+    const mutationOptions: UseMutationOptions<GenerateCaResponse, AxiosError<DefaultError>, Options<GenerateCaData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await generateCa({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Import an existing CA certificate and private key.
+ */
+export const importCaMutation = (options?: Partial<Options<ImportCaData>>): UseMutationOptions<ImportCaResponse, AxiosError<DefaultError>, Options<ImportCaData>> => {
+    const mutationOptions: UseMutationOptions<ImportCaResponse, AxiosError<DefaultError>, Options<ImportCaData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await importCa({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const deleteCaMutation = (options?: Partial<Options<DeleteCaData>>): UseMutationOptions<DeleteCaResponse, AxiosError<DefaultError>, Options<DeleteCaData>> => {
+    const mutationOptions: UseMutationOptions<DeleteCaResponse, AxiosError<DefaultError>, Options<DeleteCaData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteCa({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getCaQueryKey = (options: Options<GetCaData>) => createQueryKey('getCa', options);
+
+export const getCaOptions = (options: Options<GetCaData>) => queryOptions<GetCaResponse, AxiosError<DefaultError>, GetCaResponse, ReturnType<typeof getCaQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getCa({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getCaQueryKey(options)
 });
 
 export const listHostsQueryKey = (options?: Options<ListHostsData>) => createQueryKey('listHosts', options);
