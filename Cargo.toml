@@ -38,6 +38,8 @@ sha2 = "0.10"
 thiserror = "2.0.18"
 time = "0.3"
 tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
+tokio-util = "0.7.18"
+toml = { version = "0.9.8", features = ["serde"] }
 tower = "0.5.3"
 tower-http = { version = "0.6.8", features = ["cors", "request-id", "trace", "validate-request"] }
 tracing = "0.1.44"

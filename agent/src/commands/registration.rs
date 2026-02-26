@@ -1,14 +1,12 @@
-use crate::config::{auth_cert_path, auth_key_path, ca_cert_path};
-use crate::crypto::{create_csr, generate_keypair};
+use crate::client::ApiClient;
+use crate::config::AgentConfig;
+use crate::util::crypto::{create_csr, generate_keypair};
 use anyhow::{Context, Result, bail};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use lucid_common::params::RegisterAgentRequest;
-use lucid_common::views::RegisterAgentResponse;
-use reqwest::Client;
 use serde::{Deserialize};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Deserialize)]
 struct JwtClaims {
@@ -16,12 +14,12 @@ struct JwtClaims {
     // other fields we don't need
 }
 
-pub async fn register(token: &str, data_dir: PathBuf) -> Result<()> {
+pub async fn register(token: &str, config: AgentConfig) -> Result<()> {
     // 1. Check if already registered
-    if auth_key_path(data_dir.clone()).exists() {
+    if config.auth_key_path().exists() {
         bail!(
             "Agent already registered. Delete {} to re-register.",
-            auth_key_path(data_dir.clone()).display()
+            config.auth_key_path().display()
         );
     }
 
@@ -44,33 +42,25 @@ pub async fn register(token: &str, data_dir: PathBuf) -> Result<()> {
     let csr_pem = create_csr(&key_pair, &hostname)?;
 
     // 6. Make registration request
-    let client = Client::new();
-    let response = client
-        .post(format!("{}/api/v1/agents/register", api_url))
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&RegisterAgentRequest { csr_pem, hostname })
-        .send()
-        .await
-        .context("Failed to send registration request")?;
+    let client = ApiClient::new(api_url, None, None, None)
+        .context("Failed to create API client")?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        bail!("Registration failed ({}): {}", status, body);
-    }
-
-    let reg_response: RegisterAgentResponse = response
-        .json()
+    let reg_response = client.register(
+        token.to_string(),
+        csr_pem,
+        hostname,
+    )
         .await
-        .context("Failed to parse registration response")?;
+        .context("Failed to register agent")?;
 
     // 7. Create directory if needed
-    fs::create_dir_all(data_dir.clone()).context(format!("Failed to create {:?}", data_dir.clone()))?;
+    fs::create_dir_all(config.data_dir.clone())
+        .context(format!("Failed to create {:?}", config.data_dir.clone()))?;
 
     // 8. Write files atomically
-    write_file_atomic(&auth_key_path(data_dir.clone()), &private_key_pem, 0o600)?;
-    write_file_atomic(&auth_cert_path(data_dir.clone()), &reg_response.certificate_pem, 0o644)?;
-    write_file_atomic(&ca_cert_path(data_dir.clone()), &reg_response.ca_certificate_pem, 0o644)?;
+    write_file_atomic(&config.auth_key_path(), &private_key_pem, 0o600)?;
+    write_file_atomic(&config.auth_cert_path(), &reg_response.certificate_pem, 0o644)?;
+    write_file_atomic(&config.ca_cert_path(), &reg_response.ca_certificate_pem, 0o644)?;
 
     println!("✓ Registered as agent {}", reg_response.agent_id);
     println!("  Certificate expires: {}", reg_response.expires_at);
@@ -109,6 +99,28 @@ fn write_file_atomic(path: &Path, content: &str, mode: u32) -> Result<()> {
 
     // Atomic rename
     fs::rename(&temp_path, path).context(format!("Failed to rename to {}", path.display()))?;
+
+    Ok(())
+}
+
+pub fn unregister(config: AgentConfig) -> anyhow::Result<()> {
+    let mut removed = false;
+
+    for path in [config.auth_key_path(), config.auth_cert_path(), config.ca_cert_path()] {
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+            println!("Removed: {}", path.display());
+            removed = true;
+        }
+    }
+
+    if removed {
+        println!("✓ Local credentials removed");
+        println!("  Note: The agent is still registered on the server.");
+        println!("  An admin must revoke it via the API.");
+    } else {
+        println!("No credentials found - agent was not registered.");
+    }
 
     Ok(())
 }
