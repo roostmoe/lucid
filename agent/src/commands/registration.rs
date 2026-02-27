@@ -3,7 +3,7 @@ use crate::config::AgentConfig;
 use crate::util::crypto::{create_csr, generate_keypair};
 use anyhow::{Context, Result, bail};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use serde::{Deserialize};
+use serde::Deserialize;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -42,14 +42,11 @@ pub async fn register(token: &str, config: AgentConfig) -> Result<()> {
     let csr_pem = create_csr(&key_pair, &hostname)?;
 
     // 6. Make registration request
-    let client = ApiClient::new(api_url, None, None, None)
-        .context("Failed to create API client")?;
+    let client =
+        ApiClient::new(api_url, None, None, None).context("Failed to create API client")?;
 
-    let reg_response = client.register(
-        token.to_string(),
-        csr_pem,
-        hostname,
-    )
+    let reg_response = client
+        .register(token.to_string(), csr_pem, hostname)
         .await
         .context("Failed to register agent")?;
 
@@ -59,8 +56,16 @@ pub async fn register(token: &str, config: AgentConfig) -> Result<()> {
 
     // 8. Write files atomically
     write_file_atomic(&config.auth_key_path(), &private_key_pem, 0o600)?;
-    write_file_atomic(&config.auth_cert_path(), &reg_response.certificate_pem, 0o644)?;
-    write_file_atomic(&config.ca_cert_path(), &reg_response.ca_certificate_pem, 0o644)?;
+    write_file_atomic(
+        &config.auth_cert_path(),
+        &reg_response.certificate_pem,
+        0o644,
+    )?;
+    write_file_atomic(
+        &config.ca_cert_path(),
+        &reg_response.ca_certificate_pem,
+        0o644,
+    )?;
 
     println!("✓ Registered as agent {}", reg_response.agent_id);
     println!("  Certificate expires: {}", reg_response.expires_at);
@@ -106,7 +111,11 @@ fn write_file_atomic(path: &Path, content: &str, mode: u32) -> Result<()> {
 pub fn unregister(config: AgentConfig) -> anyhow::Result<()> {
     let mut removed = false;
 
-    for path in [config.auth_key_path(), config.auth_cert_path(), config.ca_cert_path()] {
+    for path in [
+        config.auth_key_path(),
+        config.auth_cert_path(),
+        config.ca_cert_path(),
+    ] {
         if path.exists() {
             std::fs::remove_file(&path)?;
             println!("Removed: {}", path.display());

@@ -4,7 +4,10 @@ use anyhow::Result;
 use tokio::{sync::mpsc, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 
-use crate::{config::AgentConfig, plugins::{Plugin, PluginContext, ServicePlugin, TaskEnvelope}};
+use crate::{
+    config::AgentConfig,
+    plugins::{Plugin, PluginContext, ServicePlugin, TaskEnvelope},
+};
 
 pub struct AgentDaemon {
     scheduled: Vec<Box<dyn Plugin>>,

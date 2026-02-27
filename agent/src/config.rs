@@ -11,8 +11,9 @@ impl AgentConfig {
     pub fn from_file(path: PathBuf) -> anyhow::Result<Self> {
         let config_str = std::fs::read_to_string(&path)
             .map_err(|e| anyhow::anyhow!("Failed to read config file {}: {}", path.display(), e))?;
-        let config = toml::from_str(&config_str)
-            .map_err(|e| anyhow::anyhow!("Failed to parse config file {}: {}", path.display(), e))?;
+        let config = toml::from_str(&config_str).map_err(|e| {
+            anyhow::anyhow!("Failed to parse config file {}: {}", path.display(), e)
+        })?;
         Ok(config)
     }
 

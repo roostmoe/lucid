@@ -7,8 +7,8 @@ use crate::config::AgentConfig;
 mod config;
 mod util;
 
-mod commands;
 mod client;
+mod commands;
 mod plugins;
 
 #[derive(Parser)]
@@ -22,7 +22,7 @@ pub struct Args {
         short,
         global = true,
         env = "LUCID_AGENT_CONFIG_PATH",
-        default_value = "/etc/lucid/agent.toml",
+        default_value = "/etc/lucid/agent.toml"
     )]
     config_path: PathBuf,
 }
