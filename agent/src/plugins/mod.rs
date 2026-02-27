@@ -52,7 +52,7 @@ pub trait Plugin: Send + Sync + 'static {
 }
 
 #[async_trait]
-pub trait ServicePlugin: Send + Send + 'static {
+pub trait ServicePlugin: Send + Sync + 'static {
     fn id(&self) -> &'static str;
 
     async fn run(
