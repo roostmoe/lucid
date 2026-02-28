@@ -1,0 +1,94 @@
+name: PR Validation (Rust)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'agent/**'
+      - 'api/**'
+      - 'common/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/pr-rust.yml'
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a # v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+
+      - name: Run tests
+        run: cargo test --workspace --all-features
+
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a # v1
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a # v1
+        with:
+          toolchain: stable
+          components: clippy
+
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-features -- -D warnings
+
+  openapi:
+    name: OpenAPI Schema
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongodb/mongodb-community-server:8.0-ubi8
+        ports: [27017:27017]
+    env:
+      LUCID_API_DB_URL: mongodb://localhost:27017/lucid
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6.0.2
+
+      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a # v1
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+
+      - name: Generate OpenAPI schema
+        run: cargo run --bin lucid-api -- --dump-openapi > /tmp/openapi.json
+
+      - name: Check schema is up to date
+        run: |
+          if ! diff -q api/openapi.json /tmp/openapi.json; then
+            echo "❌ OpenAPI schema is out of date"
+            echo "Run: cargo run --bin lucid-api -- --dump-openapi > api/openapi.json"
+            exit 1
+          fi
+          echo "✅ OpenAPI schema is up to date"

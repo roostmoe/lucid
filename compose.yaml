@@ -1,0 +1,12 @@
+---
+volumes:
+  mongodb:
+
+services:
+  mongo:
+    image: mongodb/mongodb-community-server:8.0-ubi8
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb:/data/db

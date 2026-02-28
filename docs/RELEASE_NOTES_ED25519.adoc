@@ -1,0 +1,96 @@
+= Ed25519 Signing: Release Notes Snippet
+
+Use this content when preparing release notes that include the Ed25519 signing changes.
+
+---
+
+== Improved Session Security with Ed25519
+
+We've upgraded Lucid's session authentication to use **Ed25519 digital signatures** instead of HMAC. This provides stronger security properties and sets the foundation for future features like JWT API tokens.
+
+=== What Changed
+
+- Session tokens now use Ed25519 public-key cryptography
+- Configuration requires an Ed25519 PEM-formatted signing key
+- All existing sessions will be invalidated on upgrade
+
+=== What You Need to Do
+
+**Generate a signing key:**
+
+[source,bash]
+----
+openssl genpkey -algorithm ED25519 -out signing_key.pem
+chmod 600 signing_key.pem
+----
+
+**Configure the API:**
+
+[source,bash]
+----
+export LUCID_API_SIGNING_KEY_FILE=/path/to/signing_key.pem
+----
+
+**Restart the service:**
+
+[source,bash]
+----
+systemctl restart lucid-api
+----
+
+Users will need to log in again after the upgrade.
+
+=== Documentation
+
+- **Migration guide:** link:docs/MIGRATION_HMAC_TO_ED25519.adoc[MIGRATION_HMAC_TO_ED25519.adoc]
+- **Security best practices:** link:docs/SECURITY_ED25519.adoc[SECURITY_ED25519.adoc]
+- **Configuration:** See the Configuration section in link:README.adoc[README.adoc]
+
+=== Why Ed25519?
+
+- **Better security:** Public-key cryptography vs symmetric secrets
+- **Future-proof:** Enables JWT signing, distributed verification, and key rotation
+- **Standard:** Widely supported, battle-tested algorithm (RFC 8032)
+
+---
+
+== Alternative: Short Version
+
+Use this for minor release notes:
+
+---
+
+=== Session Authentication Upgrade
+
+- **BREAKING:** Session tokens now use Ed25519 signatures (replaces HMAC)
+- Requires Ed25519 signing key configuration (see README)
+- Existing sessions will be invalidated
+- Migration guide: `docs/MIGRATION_HMAC_TO_ED25519.adoc`
+
+---
+
+== Alternative: Git Commit Message Format
+
+Use this as a template for commit messages:
+
+---
+
+feat(auth)!: replace HMAC with Ed25519 for session signing
+
+BREAKING CHANGE: Session authentication now requires Ed25519 signing key
+
+- Add generic Signer trait for pluggable signature implementations
+- Implement Ed25519Signer with PEM key loading
+- Add SessionSigner wrapper for session token format
+- Add LUCID_API_SIGNING_KEY and LUCID_API_SIGNING_KEY_FILE config
+- Session tokens format: {session_id}.{base64_signature}
+
+Migration:
+- Generate Ed25519 key: `openssl genpkey -algorithm ED25519 -out signing_key.pem`
+- Configure: `export LUCID_API_SIGNING_KEY_FILE=/path/to/key.pem`
+- Restart API service
+- Users must re-authenticate (all sessions invalidated)
+
+See docs/MIGRATION_HMAC_TO_ED25519.adoc for details.
+
+---
