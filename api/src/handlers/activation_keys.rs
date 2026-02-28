@@ -12,6 +12,7 @@ use lucid_db::{
     storage::{ActivationKeyFilter, ActivationKeyStore},
 };
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 use utoipa::ToSchema;
 
 use crate::{
@@ -54,19 +55,9 @@ pub async fn create_activation_key(
     Auth(caller): Auth,
     Json(req): Json<CreateActivationKeyRequest>,
 ) -> Result<(StatusCode, Json<CreateActivationKeyResponse>), ApiError> {
-    let db_key = DbActivationKey {
-        id: None,
-        key_id: req.key_id,
-        description: req.description,
-        used_by_agent_id: None,
-    };
+    let db_key = DbActivationKey::new(req.key_id, req.description);
 
     let created = ActivationKeyStore::create(&*ctx.db, caller, db_key).await?;
-
-    let internal_id = created
-        .id
-        .map(|oid| oid.to_string())
-        .ok_or_else(|| anyhow::anyhow!("Failed to get created key ID"))?;
 
     // Generate JWT
     let pem = ctx._config.get_signing_key_pem()?;
@@ -76,7 +67,7 @@ pub async fn create_activation_key(
         &pem,
         &ctx._config.public_url,
         &created.key_id,
-        &internal_id,
+        &created.id.to_string(),
     )
     .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -150,8 +141,8 @@ pub async fn get_activation_key(
 pub async fn delete_activation_key(
     State(ctx): State<ApiContext>,
     Auth(caller): Auth,
-    Path(id): Path<String>,
+    Path(id): Path<Ulid>,
 ) -> Result<StatusCode, ApiError> {
-    ActivationKeyStore::delete(&*ctx.db, caller, id).await?;
+    ActivationKeyStore::delete(&*ctx.db, caller, id.into()).await?;
     Ok(StatusCode::NO_CONTENT)
 }

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use lucid_common::{
     params::RegisterAgentRequest,
     views::{ApiErrorResponse, RegisterAgentResponse},

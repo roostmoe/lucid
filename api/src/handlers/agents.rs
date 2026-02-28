@@ -56,11 +56,7 @@ pub async fn register_agent(
     );
 
     // 2. Check activation key not used
-    let activation_key_id = activation_key
-        .id
-        .ok_or_else(|| ApiError::internal("Activation key missing ID"))?;
-
-    if ActivationKeyStore::is_used(&*ctx.db, activation_key_id)
+    if ActivationKeyStore::is_used(&*ctx.db, activation_key.id.clone())
         .await
         .map_err(|e| ApiError::internal(format!("Failed to check key usage: {}", e)))?
     {
@@ -140,7 +136,7 @@ pub async fn register_agent(
     debug!(agent_id = %agent_id, "Agent created");
 
     // 9. Mark activation key as used
-    ActivationKeyStore::mark_as_used(&*ctx.db, activation_key_id, agent_id)
+    ActivationKeyStore::mark_as_used(&*ctx.db, activation_key.id, agent_id)
         .await
         .map_err(|e| ApiError::internal(format!("Failed to mark key as used: {}", e)))?;
 

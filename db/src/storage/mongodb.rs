@@ -20,7 +20,7 @@ use mongodb::{
 use tracing::{info, instrument};
 
 use crate::{
-    models::{DbActivationKey, DbAgent, DbCa, DbHost, DbSession, DbUser},
+    models::{DbActivationKey, DbAgent, DbCa, DbHost, DbSession, DbUlid, DbUser},
     storage::{
         ActivationKeyFilter, ActivationKeyStore, AgentStore, CaStore, HostFilter, HostStore,
         SessionStore, Storage, StoreError, UserFilter, UserStore,
@@ -671,7 +671,7 @@ impl ActivationKeyStore for MongoDBStorage {
     async fn create(
         &self,
         caller: Caller,
-        mut key: DbActivationKey,
+        key: DbActivationKey,
     ) -> Result<DbActivationKey, StoreError> {
         caller
             .require(Permission::ActivationKeysWrite)
@@ -681,36 +681,28 @@ impl ActivationKeyStore for MongoDBStorage {
             .get_db()
             .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
 
-        let result = collection.insert_one(&key).await?;
-        key.id = Some(
-            result
-                .inserted_id
-                .as_object_id()
-                .ok_or_else(|| StoreError::InternalAnyhow(anyhow!("Failed to get ObjectId")))?,
-        );
+        collection.insert_one(&key).await?;
 
         Ok(key)
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError> {
+    async fn delete(&self, caller: Caller, id: DbUlid) -> Result<(), StoreError> {
         caller
             .require(Permission::ActivationKeysDelete)
             .map_err(|_| StoreError::PermissionDenied)?;
-
-        let object_id = ObjectId::from_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
 
         let collection = self
             .get_db()
             .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
 
-        collection.delete_one(doc! {"_id": object_id}).await?;
+        collection.delete_one(doc! {"_id": id}).await?;
 
         Ok(())
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn mark_as_used(&self, key_id: ObjectId, agent_id: ObjectId) -> Result<(), StoreError> {
+    async fn mark_as_used(&self, key_id: DbUlid, agent_id: ObjectId) -> Result<(), StoreError> {
         let collection = self
             .get_db()
             .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
@@ -726,7 +718,7 @@ impl ActivationKeyStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn is_used(&self, key_id: ObjectId) -> Result<bool, StoreError> {
+    async fn is_used(&self, key_id: DbUlid) -> Result<bool, StoreError> {
         let collection = self
             .get_db()
             .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);

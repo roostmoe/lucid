@@ -9,7 +9,7 @@ use lucid_common::{
 };
 use thiserror::Error;
 
-use crate::models::{DbActivationKey, DbAgent, DbCa, DbHost, DbSession, DbUser};
+use crate::models::{DbActivationKey, DbAgent, DbCa, DbHost, DbSession, DbUlid, DbUser};
 
 pub mod mongodb;
 
@@ -148,9 +148,9 @@ pub trait ActivationKeyStore {
         caller: Caller,
         key: DbActivationKey,
     ) -> Result<DbActivationKey, StoreError>;
-    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError>;
-    async fn mark_as_used(&self, key_id: ObjectId, agent_id: ObjectId) -> Result<(), StoreError>;
-    async fn is_used(&self, key_id: ObjectId) -> Result<bool, StoreError>;
+    async fn delete(&self, caller: Caller, id: DbUlid) -> Result<(), StoreError>;
+    async fn mark_as_used(&self, key_id: DbUlid, agent_id: ObjectId) -> Result<(), StoreError>;
+    async fn is_used(&self, key_id: DbUlid) -> Result<bool, StoreError>;
     async fn get_by_internal_id(
         &self,
         internal_id: &str,
