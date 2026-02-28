@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{time::Duration};
 
 use anyhow::anyhow;
 use argon2::{
@@ -14,7 +14,7 @@ use lucid_common::{
 };
 use mongodb::{
     Client, Database, IndexModel,
-    bson::{DateTime as BsonDateTime, doc, oid::ObjectId},
+    bson::{DateTime as BsonDateTime, doc},
     options::{ClientOptions, FindOptions, IndexOptions},
 };
 use tracing::{info, instrument};
@@ -188,7 +188,7 @@ pub const MONGODB_COLLECTION_CA: &str = "ca";
 #[async_trait]
 impl UserStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
-    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbUser>, StoreError> {
+    async fn get(&self, caller: Caller, id: DbUlid) -> Result<Option<DbUser>, StoreError> {
         caller
             .require(Permission::UsersRead)
             .map_err(|_| StoreError::PermissionDenied)?;
@@ -227,12 +227,7 @@ impl UserStore for MongoDBStorage {
 
         let mut filter_doc = doc! {};
         if let Some(ids) = filter.id {
-            let object_ids: Vec<ObjectId> = ids
-                .into_iter()
-                .filter_map(|id| ObjectId::from_str(&id).ok())
-                .collect();
-
-            filter_doc.insert("_id", doc! { "$in": object_ids });
+            filter_doc.insert("_id", doc! { "$in": ids });
         }
         if let Some(emails) = filter.email {
             filter_doc.insert("email", doc! { "$in": &emails });
@@ -264,19 +259,16 @@ impl UserStore for MongoDBStorage {
         let collection = self.get_db().collection::<DbUser>(MONGODB_COLLECTION_USERS);
 
         let new_user = DbUser {
-            id: None,
+            id: DbUlid::new(),
             display_name: user.display_name,
             email: user.email,
             password_hash: Some(hash_password(user.password).map_err(|e| anyhow!(e))?),
             updated_at: chrono::Utc::now(),
         };
 
-        let insert_result = collection.insert_one(new_user.clone()).await?;
+        collection.insert_one(new_user.clone()).await?;
 
-        Ok(DbUser {
-            id: insert_result.inserted_id.as_object_id(),
-            ..new_user
-        })
+        Ok(new_user)
     }
 
     #[instrument(skip(self), err(Debug))]
@@ -347,7 +339,7 @@ impl SessionStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
     async fn create_session(
         &self,
-        user_id: mongodb::bson::oid::ObjectId,
+        user_id: DbUlid,
         session_id: String,
         csrf_token: String,
         ttl: chrono::Duration,
@@ -360,7 +352,7 @@ impl SessionStore for MongoDBStorage {
         let expires_at = now + ttl;
 
         let new_session = DbSession {
-            id: None,
+            id: DbUlid::new(),
             session_id,
             user_id,
             csrf_token,
@@ -369,12 +361,9 @@ impl SessionStore for MongoDBStorage {
             last_used_at: now,
         };
 
-        let insert_result = collection.insert_one(new_session.clone()).await?;
+        collection.insert_one(new_session.clone()).await?;
 
-        Ok(DbSession {
-            id: insert_result.inserted_id.as_object_id(),
-            ..new_session
-        })
+        Ok(new_session)
     }
 
     #[instrument(skip(self), err(Debug))]
@@ -452,7 +441,7 @@ impl SessionStore for MongoDBStorage {
 #[async_trait]
 impl HostStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
-    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbHost>, StoreError> {
+    async fn get(&self, caller: Caller, id: DbUlid) -> Result<Option<DbHost>, StoreError> {
         caller
             .require(Permission::HostsRead)
             .map_err(|_| StoreError::PermissionDenied)?;
@@ -494,11 +483,7 @@ impl HostStore for MongoDBStorage {
         let mut filter_doc = doc! {};
 
         if let Some(ids) = filter.id {
-            let object_ids: Vec<ObjectId> = ids
-                .into_iter()
-                .filter_map(|id| ObjectId::from_str(&id).ok())
-                .collect();
-            filter_doc.insert("_id", doc! { "$in": object_ids });
+            filter_doc.insert("_id", doc! { "$in": ids });
         }
         if let Some(hostnames) = filter.hostname {
             filter_doc.insert("hostname", doc! { "$in": &hostnames });
@@ -537,12 +522,9 @@ impl HostStore for MongoDBStorage {
             .get_db()
             .collection::<DbHost>(MONGODB_COLLECTION_INVENTORY_HOSTS);
 
-        let insert_result = collection.insert_one(host.clone()).await?;
+        collection.insert_one(host.clone()).await?;
 
-        Ok(DbHost {
-            id: insert_result.inserted_id.as_object_id(),
-            ..host
-        })
+        Ok(host)
     }
 
     #[instrument(skip(self), err(Debug))]
@@ -550,8 +532,6 @@ impl HostStore for MongoDBStorage {
         caller
             .require(Permission::HostsWrite)
             .map_err(|_| StoreError::PermissionDenied)?;
-
-        let id = host.id.ok_or_else(|| StoreError::NotFound)?;
 
         let collection = self
             .get_db()
@@ -562,7 +542,7 @@ impl HostStore for MongoDBStorage {
 
         collection
             .update_one(
-                doc! {"_id": id},
+                doc! {"_id": host.id.clone()},
                 doc! {
                     "$set": {
                         "hostname": &host.hostname,
@@ -582,18 +562,16 @@ impl HostStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError> {
+    async fn delete(&self, caller: Caller, id: DbUlid) -> Result<(), StoreError> {
         caller
             .require(Permission::HostsDelete)
             .map_err(|_| StoreError::PermissionDenied)?;
-
-        let object_id = ObjectId::from_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
 
         let collection = self
             .get_db()
             .collection::<DbHost>(MONGODB_COLLECTION_INVENTORY_HOSTS);
 
-        collection.delete_one(doc! {"_id": object_id}).await?;
+        collection.delete_one(doc! {"_id": id}).await?;
 
         Ok(())
     }
@@ -602,7 +580,7 @@ impl HostStore for MongoDBStorage {
 #[async_trait]
 impl ActivationKeyStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
-    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbActivationKey>, StoreError> {
+    async fn get(&self, caller: Caller, id: DbUlid) -> Result<Option<DbActivationKey>, StoreError> {
         caller
             .require(Permission::ActivationKeysRead)
             .map_err(|_| StoreError::PermissionDenied)?;
@@ -643,12 +621,7 @@ impl ActivationKeyStore for MongoDBStorage {
 
         let mut filter_doc = doc! {};
         if let Some(ids) = filter.id {
-            let object_ids: Vec<ObjectId> = ids
-                .into_iter()
-                .filter_map(|id| ObjectId::from_str(&id).ok())
-                .collect();
-
-            filter_doc.insert("_id", doc! { "$in": object_ids });
+            filter_doc.insert("_id", doc! { "$in": ids });
         }
         if let Some(key_ids) = filter.key_id {
             filter_doc.insert("key_id", doc! { "$in": &key_ids });
@@ -702,7 +675,7 @@ impl ActivationKeyStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn mark_as_used(&self, key_id: DbUlid, agent_id: ObjectId) -> Result<(), StoreError> {
+    async fn mark_as_used(&self, key_id: DbUlid, agent_id: DbUlid) -> Result<(), StoreError> {
         let collection = self
             .get_db()
             .collection::<DbActivationKey>(MONGODB_COLLECTION_ACTIVATION_KEYS);
@@ -751,16 +724,13 @@ impl AgentStore for MongoDBStorage {
             .get_db()
             .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
 
-        let insert_result = collection.insert_one(&agent).await?;
+        collection.insert_one(&agent).await?;
 
-        Ok(DbAgent {
-            id: insert_result.inserted_id.as_object_id(),
-            ..agent
-        })
+        Ok(agent)
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn get(&self, id: ObjectId) -> Result<Option<DbAgent>, StoreError> {
+    async fn get(&self, id: DbUlid) -> Result<Option<DbAgent>, StoreError> {
         let collection = self
             .get_db()
             .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
@@ -785,8 +755,6 @@ impl AgentStore for MongoDBStorage {
 
     #[instrument(skip(self, agent), err(Debug))]
     async fn update(&self, agent: DbAgent) -> Result<DbAgent, StoreError> {
-        let id = agent.id.ok_or_else(|| StoreError::NotFound)?;
-
         let collection = self
             .get_db()
             .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
@@ -797,7 +765,7 @@ impl AgentStore for MongoDBStorage {
 
         collection
             .update_one(
-                doc! {"_id": id},
+                doc! {"_id": agent.id.clone()},
                 doc! {
                     "$set": {
                         "name": &agent.name,
@@ -814,7 +782,7 @@ impl AgentStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn update_last_seen(&self, id: ObjectId) -> Result<(), StoreError> {
+    async fn update_last_seen(&self, id: DbUlid) -> Result<(), StoreError> {
         let collection = self
             .get_db()
             .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
@@ -829,7 +797,7 @@ impl AgentStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn soft_delete(&self, id: ObjectId) -> Result<(), StoreError> {
+    async fn soft_delete(&self, id: DbUlid) -> Result<(), StoreError> {
         let collection = self
             .get_db()
             .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
@@ -844,7 +812,7 @@ impl AgentStore for MongoDBStorage {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn hard_delete(&self, id: ObjectId) -> Result<(), StoreError> {
+    async fn hard_delete(&self, id: DbUlid) -> Result<(), StoreError> {
         let collection = self
             .get_db()
             .collection::<DbAgent>(MONGODB_COLLECTION_AGENTS);
@@ -858,14 +826,13 @@ impl AgentStore for MongoDBStorage {
 #[async_trait]
 impl CaStore for MongoDBStorage {
     #[instrument(skip(self), err(Debug))]
-    async fn get(&self, caller: Caller, id: String) -> Result<Option<DbCa>, StoreError> {
+    async fn get(&self, caller: Caller, id: DbUlid) -> Result<Option<DbCa>, StoreError> {
         caller
             .require(Permission::CaRead)
             .map_err(|_| StoreError::PermissionDenied)?;
 
-        let oid = ObjectId::parse_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
         let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
-        let ca = collection.find_one(doc! { "_id": oid }).await?;
+        let ca = collection.find_one(doc! { "_id": id }).await?;
         Ok(ca)
     }
 
@@ -888,23 +855,19 @@ impl CaStore for MongoDBStorage {
             .map_err(|_| StoreError::PermissionDenied)?;
 
         let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
-        let insert_result = collection.insert_one(&ca).await?;
+        collection.insert_one(&ca).await?;
 
-        Ok(DbCa {
-            id: insert_result.inserted_id.as_object_id(),
-            ..ca
-        })
+        Ok(ca)
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn delete(&self, caller: Caller, id: String) -> Result<(), StoreError> {
+    async fn delete(&self, caller: Caller, id: DbUlid) -> Result<(), StoreError> {
         caller
             .require(Permission::CaDelete)
             .map_err(|_| StoreError::PermissionDenied)?;
 
-        let oid = ObjectId::parse_str(&id).map_err(|e| StoreError::Internal(Box::new(e)))?;
         let collection = self.get_db().collection::<DbCa>(MONGODB_COLLECTION_CA);
-        let result = collection.delete_one(doc! { "_id": oid }).await?;
+        let result = collection.delete_one(doc! { "_id": id }).await?;
 
         if result.deleted_count == 0 {
             return Err(StoreError::NotFound);

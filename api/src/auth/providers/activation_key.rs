@@ -83,7 +83,7 @@ impl AuthProvider for ActivationKeyAuthProvider {
         debug!(ak = %claims.ak, "JWT decoded successfully");
 
         // 3. Look up activation key in DB
-        let activation_key = ActivationKeyStore::get_by_internal_id(&*self.db, &claims.ak)
+        let activation_key = ActivationKeyStore::get_by_internal_id(&*self.db, &claims.ak.to_string())
             .await?
             .ok_or_else(|| {
                 debug!("Activation key not found");

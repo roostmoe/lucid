@@ -10,8 +10,8 @@ use lucid_db::{
     models::{DbAgent, DbHost, OperatingSystem},
     storage::{ActivationKeyStore, AgentStore, HostStore},
 };
-use mongodb::bson::oid::ObjectId;
 use tracing::{debug, info, instrument};
+use ulid::Ulid;
 use x509_parser::prelude::*;
 
 use crate::{auth::jwt::ActivationKeyClaims, context::ApiContext, error::ApiError};
@@ -77,7 +77,7 @@ pub async fn register_agent(
     debug!("Public key extracted from CSR");
 
     // 5. Create new agent UUID
-    let agent_id = ObjectId::new();
+    let agent_id = Ulid::new();
 
     debug!(agent_id = %agent_id, "Generated agent ID");
 
@@ -91,7 +91,7 @@ pub async fn register_agent(
 
     // 7. Create DbHost with minimal info
     let host = DbHost {
-        id: None, // Will be assigned by DB
+        id: Ulid::new().into(),
         hostname: req.hostname.clone(),
         architecture: "unknown".to_string(),
         operating_system: OperatingSystem {
@@ -99,7 +99,7 @@ pub async fn register_agent(
             name: "Unknown".to_string(),
             version: "0".to_string(),
         },
-        agent_id: Some(agent_id),
+        agent_id: Some(agent_id.into()),
         updated_at: Utc::now(),
         last_seen_at: Utc::now(),
     };
@@ -108,17 +108,13 @@ pub async fn register_agent(
         .await
         .map_err(|e| ApiError::internal(format!("Failed to create host: {}", e)))?;
 
-    let host_id = created_host
-        .id
-        .ok_or_else(|| ApiError::internal("Host missing ID after creation"))?;
-
-    debug!(host_id = %host_id, "Host created");
+    debug!(host_id = %created_host.id, "Host created");
 
     // 8. Create DbAgent linking to host
     let agent = DbAgent {
-        id: Some(agent_id),
+        id: agent_id.into(),
         name: req.hostname.clone(),
-        host_id,
+        host_id: created_host.id,
         public_key_pem,
         certificate_pem: signed_cert.cert_pem.clone(),
         cert_issued_at: signed_cert.issued_at,
@@ -136,7 +132,7 @@ pub async fn register_agent(
     debug!(agent_id = %agent_id, "Agent created");
 
     // 9. Mark activation key as used
-    ActivationKeyStore::mark_as_used(&*ctx.db, activation_key.id, agent_id)
+    ActivationKeyStore::mark_as_used(&*ctx.db, activation_key.id, agent_id.into())
         .await
         .map_err(|e| ApiError::internal(format!("Failed to mark key as used: {}", e)))?;
 
@@ -181,7 +177,7 @@ async fn validate_activation_key_jwt(
     info!(?claims, "Validating token with claims...");
 
     // Look up activation key
-    let activation_key = ActivationKeyStore::get(&*ctx.db, Caller::System, claims.ak.clone())
+    let activation_key = ActivationKeyStore::get(&*ctx.db, Caller::System, claims.ak.into())
         .await
         .map_err(|e| ApiError::internal(format!("DB error: {}", e)))?
         .ok_or_else(|| ApiError::unauthorized("Invalid activation key"))?;

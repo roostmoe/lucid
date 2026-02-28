@@ -1,13 +1,14 @@
 use chrono::{DateTime, Utc};
 use bson::serde_helpers::datetime::FromChrono04DateTime;
 use lucid_common::views::Host;
-use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
+
+use crate::models::DbUlid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbHost {
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<ObjectId>,
+    #[serde(rename = "_id")]
+    pub id: DbUlid,
 
     /// The hostname or IP address of the host
     pub hostname: String,
@@ -20,7 +21,7 @@ pub struct DbHost {
 
     /// Reference to the agent for this host (optional for backward compatibility)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub agent_id: Option<ObjectId>,
+    pub agent_id: Option<DbUlid>,
 
     /// When the host was last updated manually
     #[serde(with = "FromChrono04DateTime")]
@@ -34,19 +35,13 @@ pub struct DbHost {
 impl From<DbHost> for Host {
     fn from(value: DbHost) -> Self {
         Self {
-            id: value
-                .id
-                .map(|oid| oid.to_string())
-                .unwrap_or_else(|| "unknown".into()),
+            id: value.id.clone().into(),
             hostname: value.hostname.clone(),
             os_id: value.operating_system.id.clone(),
             os_name: value.operating_system.name.clone(),
             os_version: value.operating_system.version.clone(),
             architecture: value.architecture.clone(),
-            created_at: value
-                .id
-                .map(|oid| oid.timestamp().to_system_time().into())
-                .unwrap_or_else(|| Utc::now()),
+            created_at: value.id.inner().datetime().into(),
             updated_at: value.updated_at,
             last_seen_at: value.last_seen_at,
             ifaces: vec![],
@@ -65,5 +60,3 @@ pub struct OperatingSystem {
     /// The version of the operating system (e.g., "20.04", "10", "11.2")
     pub version: String,
 }
-
-

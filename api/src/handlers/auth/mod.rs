@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     Json,
     extract::State,
@@ -11,6 +13,7 @@ use lucid_common::{
 use lucid_db::storage::{SessionStore, UserStore};
 use rand::Rng;
 use tracing::info;
+use ulid::Ulid;
 
 use crate::{auth::Auth, context::ApiContext, error::ApiError};
 
@@ -69,7 +72,7 @@ pub async fn auth_login(
 
     // 2. Extract user_id from Caller
     let user_id = match &caller {
-        Caller::User { id, .. } => mongodb::bson::oid::ObjectId::parse_str(id)
+        Caller::User { id, .. } => Ulid::from_str(id)
             .map_err(|e| anyhow::anyhow!("invalid user id: {}", e))?,
         _ => return Err(anyhow::anyhow!("expected user caller").into()),
     };
@@ -85,7 +88,7 @@ pub async fn auth_login(
     // 4. Create session in DB (30 day TTL)
     SessionStore::create_session(
         &*ctx.db,
-        user_id,
+        user_id.into(),
         session_id.clone(),
         csrf_token.clone(),
         chrono::Duration::days(30),
@@ -248,7 +251,11 @@ pub async fn auth_whoami(
     Auth(caller): Auth,
 ) -> Result<Json<User>, ApiError> {
     // Fetch full user from database
-    let user = UserStore::get(&*ctx.db, caller.clone(), caller.id().to_string())
+    let user = UserStore::get(
+        &*ctx.db,
+        caller.clone(),
+        Ulid::from_string(caller.id())?.into(),
+    )
         .await?
         .ok_or_else(|| anyhow::anyhow!("user not found"))?;
 

@@ -284,7 +284,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "ulid"
             }
           }
         ],
@@ -332,7 +333,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "ulid"
             }
           }
         ],
@@ -699,7 +701,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "ulid"
             }
           }
         ],
@@ -747,7 +750,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "ulid"
             }
           }
         ],
@@ -830,7 +834,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "ulid"
             }
           }
         ],
@@ -893,6 +898,7 @@
           },
           "id": {
             "type": "string",
+            "format": "ulid",
             "description": "Internal database ID"
           },
           "key_id": {
@@ -1047,6 +1053,7 @@
           },
           "id": {
             "type": "string",
+            "format": "ulid",
             "description": "Internal database ID"
           }
         }
@@ -1141,6 +1148,7 @@
           },
           "id": {
             "type": "string",
+            "format": "ulid",
             "description": "The unique identifier for this host."
           },
           "ifaces": {
@@ -1334,6 +1342,7 @@
                 },
                 "id": {
                   "type": "string",
+                  "format": "ulid",
                   "description": "Internal database ID"
                 },
                 "key_id": {
@@ -1399,6 +1408,7 @@
                 },
                 "id": {
                   "type": "string",
+                  "format": "ulid",
                   "description": "Internal database ID"
                 }
               }
@@ -1460,6 +1470,7 @@
                 },
                 "id": {
                   "type": "string",
+                  "format": "ulid",
                   "description": "The unique identifier for this host."
                 },
                 "ifaces": {
@@ -1586,6 +1597,7 @@
           },
           "id": {
             "type": "string",
+            "format": "ulid",
             "description": "The unique identifier for this user."
           },
           "updated_at": {

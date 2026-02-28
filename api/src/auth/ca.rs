@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use mongodb::bson::oid::ObjectId;
 use serde::Serialize;
+use ulid::Ulid;
 use utoipa::ToSchema;
 
 #[async_trait]
@@ -11,7 +11,7 @@ pub trait CertificateAuthority: Send + Sync {
     async fn sign_csr(
         &self,
         csr_pem: &str,
-        agent_id: ObjectId,
+        agent_id: Ulid,
     ) -> Result<SignedCertificate, CaError>;
 
     /// Get the CA certificate in PEM format.

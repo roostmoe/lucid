@@ -67,7 +67,7 @@ pub async fn create_activation_key(
         &pem,
         &ctx._config.public_url,
         &created.key_id,
-        &created.id.to_string(),
+        created.id.clone().into(),
     )
     .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -118,9 +118,9 @@ pub async fn list_activation_keys(
 pub async fn get_activation_key(
     State(ctx): State<ApiContext>,
     Auth(caller): Auth,
-    Path(id): Path<String>,
+    Path(id): Path<Ulid>,
 ) -> Result<Json<ActivationKey>, ApiError> {
-    let key = ActivationKeyStore::get(&*ctx.db, caller, id)
+    let key = ActivationKeyStore::get(&*ctx.db, caller, id.into())
         .await?
         .ok_or(ApiError::NotFound)?;
 

@@ -8,9 +8,9 @@ use lucid_db::{
     models::DbCa,
     storage::{CaStore, Storage},
 };
-use mongodb::bson::oid::ObjectId;
 use rcgen::{CertificateParams, CertificateSigningRequestParams, DistinguishedName, KeyPair};
 use sha2::{Digest, Sha256};
+use ulid::Ulid;
 use x509_parser::prelude::*;
 
 use super::ca::{CaError, CaInfo, CertificateAuthority, SignedCertificate};
@@ -51,10 +51,8 @@ impl EncryptedCa {
         // Use CA ID as AAD to prevent ciphertext transplantation
         let aad = ca
             .id
-            .as_ref()
-            .ok_or_else(|| CaError::Decryption("CA missing ID".into()))?
-            .to_hex()
-            .as_bytes()
+            .inner()
+            .to_bytes()
             .to_vec();
 
         let private_key_pem = aes::decrypt(&self.encryption_key, &ca.encrypted_private_key, &aad)
@@ -73,7 +71,7 @@ impl CertificateAuthority for EncryptedCa {
     async fn sign_csr(
         &self,
         csr_pem: &str,
-        agent_id: ObjectId,
+        agent_id: Ulid,
     ) -> Result<SignedCertificate, CaError> {
         // Load CA from store
         let ca = CaStore::list(self.storage.as_ref(), Caller::System)
@@ -101,7 +99,7 @@ impl CertificateAuthority for EncryptedCa {
 
         // Override DN with agent_id as CN
         let mut dn = DistinguishedName::new();
-        dn.push(rcgen::DnType::CommonName, agent_id.to_hex());
+        dn.push(rcgen::DnType::CommonName, agent_id.to_string());
         csr.params.distinguished_name = dn;
 
         // Set validity period (24 hours)
@@ -246,17 +244,16 @@ pub async fn generate_ca(
     // Pre-generate the ObjectId so we can use it as AAD during encryption.
     // This prevents ciphertext transplantation: the encrypted key is bound to
     // this specific CA record and cannot be decrypted if moved to another.
-    let ca_id = ObjectId::new();
-    let aad = ca_id.to_hex();
+    let ca_id = Ulid::new();
 
     // Encrypt private key
     let encrypted_private_key =
-        aes::encrypt(encryption_key, private_key_pem.as_bytes(), aad.as_bytes())
+        aes::encrypt(encryption_key, private_key_pem.as_bytes(), &ca_id.to_bytes())
             .map_err(|e| CaError::Encryption(e.to_string()))?;
 
     // Create DbCa
     let db_ca = DbCa {
-        id: Some(ca_id),
+        id: ca_id.into(),
         cert_pem: cert_pem.clone(),
         encrypted_private_key,
         created_at: now,

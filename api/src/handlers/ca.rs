@@ -5,11 +5,11 @@ use axum::{
 };
 use lucid_common::views::{Ca, PaginatedList};
 use lucid_db::{models::DbCa, storage::CaStore};
-use mongodb::bson::oid::ObjectId;
 use pem_rfc7468::decode_vec;
 use rcgen::{CertificateParams, KeyPair};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use ulid::Ulid;
 use utoipa::ToSchema;
 
 use crate::{
@@ -25,11 +25,6 @@ use crate::{
 /// Convert a `DbCa` to its public view type, computing the SHA-256 fingerprint
 /// from the PEM cert in the process.
 fn db_ca_to_view(ca: DbCa) -> Result<Ca, ApiError> {
-    let id = ca
-        .id
-        .map(|oid| oid.to_string())
-        .unwrap_or_else(|| "unknown".into());
-
     let cert_der = decode_vec(ca.cert_pem.as_bytes())
         .map_err(|e| anyhow::anyhow!("Failed to decode CA cert PEM: {e}"))?
         .1;
@@ -39,7 +34,7 @@ fn db_ca_to_view(ca: DbCa) -> Result<Ca, ApiError> {
     let fingerprint = format!("sha256:{}", hex::encode(hasher.finalize()));
 
     Ok(Ca {
-        id,
+        id: ca.id.into(),
         cert_pem: ca.cert_pem,
         fingerprint,
         created_at: ca.created_at,
@@ -132,8 +127,8 @@ pub async fn import_ca(
 
     // Pre-generate the ObjectId so we can bind the encrypted key to this
     // specific CA record via AAD (prevents ciphertext transplantation).
-    let ca_id = ObjectId::new();
-    let aad = ca_id.to_hex();
+    let ca_id = Ulid::new();
+    let aad = ca_id.to_string();
 
     let encrypted_private_key = crate::crypto::aes::encrypt(
         &encryption_key,
@@ -145,7 +140,7 @@ pub async fn import_ca(
     drop(key_pair);
 
     let db_ca = DbCa {
-        id: Some(ca_id),
+        id: ca_id.into(),
         cert_pem: req.cert_pem,
         encrypted_private_key,
         created_at: chrono::Utc::now(),
@@ -197,9 +192,9 @@ pub async fn list_cas(
 pub async fn get_ca(
     State(ctx): State<ApiContext>,
     Auth(caller): Auth,
-    Path(id): Path<String>,
+    Path(id): Path<Ulid>,
 ) -> Result<Json<Ca>, ApiError> {
-    let ca = CaStore::get(&*ctx.db, caller, id)
+    let ca = CaStore::get(&*ctx.db, caller, id.into())
         .await?
         .ok_or(ApiError::NotFound)?;
 
@@ -220,8 +215,8 @@ pub async fn get_ca(
 pub async fn delete_ca(
     State(ctx): State<ApiContext>,
     Auth(caller): Auth,
-    Path(id): Path<String>,
+    Path(id): Path<Ulid>,
 ) -> Result<StatusCode, ApiError> {
-    CaStore::delete(&*ctx.db, caller, id).await?;
+    CaStore::delete(&*ctx.db, caller, id.into()).await?;
     Ok(StatusCode::NO_CONTENT)
 }

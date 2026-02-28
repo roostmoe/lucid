@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
 pub struct Host {
     /// The unique identifier for this host.
-    pub id: String,
+    pub id: Ulid,
 
     /// Hostname of the machine. This is a human-readable identifier for the
     /// host, and is not guaranteed to be unique.

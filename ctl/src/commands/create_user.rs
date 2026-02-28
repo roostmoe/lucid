@@ -33,7 +33,7 @@ pub async fn create_user(
     )
     .await?;
 
-    println!("Created user with ID {}", new_user.id.unwrap());
+    println!("Created user with ID {}", new_user.id);
 
     Ok(())
 }

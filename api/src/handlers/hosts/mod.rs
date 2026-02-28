@@ -8,6 +8,7 @@ use lucid_common::{
     views::{Host, PaginatedList},
 };
 use lucid_db::storage::{HostFilter, HostStore};
+use ulid::Ulid;
 
 use crate::{auth::Auth, context::ApiContext, error::ApiError};
 
@@ -38,7 +39,7 @@ pub async fn list_hosts(
     tags = ["hosts"],
     responses((status = 200, description = "Resolved host", body = Host))
 )]
-pub async fn get_host(Path(id): Path<String>) -> Result<Json<Host>, ApiError> {
+pub async fn get_host(Path(id): Path<Ulid>) -> Result<Json<Host>, ApiError> {
     let created_at = Utc::now();
 
     Ok(Json(Host {

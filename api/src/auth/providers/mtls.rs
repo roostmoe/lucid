@@ -2,15 +2,15 @@
 //!
 //! Authenticates agents via client certificates presented during TLS handshake.
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use axum::http::request::Parts;
 use chrono::{Duration, Utc};
 use lucid_common::caller::{Caller, Role};
 use lucid_db::storage::{AgentStore, Storage};
-use mongodb::bson::oid::ObjectId;
 use tracing::{debug, instrument, warn};
+use ulid::Ulid;
 use x509_parser::prelude::*;
 
 use crate::auth::{error::AuthError, provider::AuthProvider};
@@ -96,13 +96,13 @@ impl AuthProvider for MtlsAuthProvider {
         debug!(cn = %cn, "Extracted CN from certificate");
 
         // 5. Parse CN as ObjectId (agent ID)
-        let agent_id = ObjectId::parse_str(cn).map_err(|e| {
+        let agent_id = Ulid::from_str(cn).map_err(|e| {
             warn!("Invalid agent ID in CN: {}", e);
             AuthError::InvalidCredentials
         })?;
 
         // 6. Look up agent in database
-        let agent = AgentStore::get(&*self.db, agent_id)
+        let agent = AgentStore::get(&*self.db, agent_id.into())
             .await
             .map_err(|e| {
                 warn!("Database error looking up agent: {}", e);
@@ -148,11 +148,7 @@ impl AuthProvider for MtlsAuthProvider {
         }
 
         // 9. Update last_seen_at
-        let agent_oid = agent
-            .id
-            .ok_or_else(|| AuthError::Internal("Agent missing ID".to_string()))?;
-
-        if let Err(e) = AgentStore::update_last_seen(&*self.db, agent_oid).await {
+        if let Err(e) = AgentStore::update_last_seen(&*self.db, agent.id).await {
             warn!("Failed to update last_seen_at: {}", e);
             // Don't fail auth for this
         }

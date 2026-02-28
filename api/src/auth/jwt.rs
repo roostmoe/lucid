@@ -2,6 +2,7 @@
 
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 
 use crate::auth::signing::Signer;
 
@@ -15,7 +16,7 @@ pub struct ActivationKeyClaims {
     /// Subject - the user-provided key_id
     pub sub: String,
     /// Activation key internal ID for DB lookup
-    pub ak: String,
+    pub ak: Ulid,
     /// Issued at timestamp
     pub iat: i64,
 }
@@ -26,12 +27,12 @@ pub fn generate_activation_key_jwt(
     pem_key: &str,
     public_url: &str,
     key_id: &str,
-    internal_id: &str,
+    internal_id: Ulid,
 ) -> Result<String, SigningError> {
     let claims = ActivationKeyClaims {
         iss: public_url.to_string(),
         sub: key_id.to_string(),
-        ak: internal_id.to_string(),
+        ak: internal_id,
         iat: chrono::Utc::now().timestamp(),
     };
 
@@ -64,7 +65,7 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key-id",
-            "internal-abc123",
+            Ulid::new(),
         )
         .unwrap();
 
@@ -86,7 +87,7 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
         let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
         let public_url = "https://lucid.example.com";
         let key_id = "test-key-id";
-        let internal_id = "internal-abc123";
+        let internal_id = Ulid::new();
 
         let jwt = generate_activation_key_jwt(
             signer,
@@ -152,7 +153,7 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
             "not a valid pem",
             "https://lucid.example.com",
             "test-key",
-            "internal-123",
+            Ulid::new(),
         );
 
         assert!(result.is_err(), "should reject invalid PEM");
@@ -172,12 +173,14 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
         let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
         let signer_2 = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM_2).unwrap();
 
+        let id = Ulid::new();
+
         let jwt1 = generate_activation_key_jwt(
             signer,
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "same-key-id",
-            "same-internal-id",
+            id.clone(),
         )
         .unwrap();
 
@@ -186,7 +189,7 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
             TEST_PRIVATE_KEY_PEM_2,
             "https://lucid.example.com",
             "same-key-id",
-            "same-internal-id",
+            id.clone(),
         )
         .unwrap();
 
@@ -206,12 +209,13 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
 
         let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
 
+        let id = Ulid::new();
         let jwt1 = generate_activation_key_jwt(
             signer.clone(),
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key",
-            "internal-123",
+            id.clone(),
         )
         .unwrap();
 
@@ -223,7 +227,7 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key",
-            "internal-123",
+            id,
         )
         .unwrap();
 
@@ -245,7 +249,7 @@ MC4CAQAwBQYDK2VwBCIEIBcUIT7KhLMKX9R1oJf+dFUDux98dVbI5mB3HuhMglFF
             TEST_PRIVATE_KEY_PEM,
             "https://lucid.example.com",
             "test-key",
-            "internal-123",
+            Ulid::new(),
         )
         .unwrap();
 

@@ -20,6 +20,9 @@ pub enum ApiError {
     #[error(transparent)]
     CallerError(#[from] lucid_common::caller::CallerError),
 
+    #[error("Invalid ULID: {0}")]
+    InvalidUlid(#[from] ulid::DecodeError),
+
     #[error(transparent)]
     InternalAnyhow(#[from] anyhow::Error),
 }
@@ -62,6 +65,7 @@ impl From<ApiError> for ApiErrorResponse {
                     StoreError::PermissionDenied => Some("Forbidden".into()),
                     _ => Some("InternalError".into()),
                 },
+                ApiError::InvalidUlid(_) => Some("InvalidUlid".into()),
                 ApiError::InternalAnyhow(_) => Some("InternalError".into()),
                 ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => Some("Forbidden".into()),
@@ -81,6 +85,7 @@ impl From<ApiError> for ApiErrorResponse {
                     }
                     _ => "Something went wrong on our end. Please try again later.".into(),
                 },
+                ApiError::InvalidUlid(_) => "You provided an invalid ULID.".into(),
                 ApiError::CallerError(ce) => match ce {
                     CallerError::Forbidden { .. } => {
                         "You do not have permission to perform this action.".into()
@@ -114,6 +119,7 @@ impl IntoResponse for ApiError {
             Self::NotFound => axum::http::StatusCode::NOT_FOUND,
             Self::ServiceUnavailable(_) => axum::http::StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal(_) => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Self::InvalidUlid(_) => axum::http::StatusCode::BAD_REQUEST,
             Self::Storage(se) => match se {
                 StoreError::NotFound => axum::http::StatusCode::NOT_FOUND,
                 StoreError::PermissionDenied => axum::http::StatusCode::FORBIDDEN,

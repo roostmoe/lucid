@@ -1,12 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 use utoipa::ToSchema;
 
 /// A certificate authority managed by Lucid.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Ca {
     /// Internal database ID
-    pub id: String,
+    pub id: Ulid,
     /// CA certificate in PEM format
     pub cert_pem: String,
     /// SHA-256 fingerprint of the certificate (format: `sha256:<hex>`)
