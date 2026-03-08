@@ -87,7 +87,7 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
         let signer = Ed25519Signer::from_pem(TEST_PRIVATE_KEY_PEM).unwrap();
         let public_url = "https://lucid.example.com";
         let key_id = "test-key-id";
-        let internal_id = Ulid::new();
+        let internal_id = Ulid::from_string("01KK6T3XB6B0XCJEXM0GC4V9ZT").unwrap();
 
         let jwt = generate_activation_key_jwt(
             signer,
@@ -116,7 +116,7 @@ MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF
             "sub claim should match"
         );
         assert!(
-            payload_str.contains(r#""ak":"internal-abc123""#),
+            payload_str.contains(r#""ak":"01KK6T3XB6B0XCJEXM0GC4V9ZT""#),
             "ak claim should match"
         );
         assert!(
