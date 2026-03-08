@@ -1,6 +1,12 @@
 [env]
 _.path = ["{{config_root}}/node_modules/.bin"]
 
+LUCID_API_DB_URL = "mongodb://localhost:27017/lucid"
+LUCID_API_SIGNING_KEY_FILE = "{{config_root}}/config/local/signing_key.pem"
+# for dev
+LUCID_CA_ENCRYPTION_KEY = "82jPGqmix2AE3FU1fux/TG1lwLQ2ZApXR5hs6f1i23k="
+LUCID_AGENT_DATA_DIR = "{{config_root}}/agent/data"
+
 [tools]
 bun = "1.3.6"
 rust = "1.93.0"

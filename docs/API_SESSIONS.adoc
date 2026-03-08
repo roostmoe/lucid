@@ -1,0 +1,242 @@
+= Session API Reference
+:toc: left
+:icons: font
+
+API reference for session-based authentication endpoints.
+
+For implementation details, see link:ARCHITECTURE_AUTH.adoc[Authentication & Authorization Architecture].
+
+== Endpoints
+
+=== POST /v1/auth/login
+
+Authenticate user and create a session.
+
+**Request Body** (application/json):
+
+[source,json]
+----
+{
+  "username": "admin",
+  "password": "secret"
+}
+----
+
+**Response** (201 Created):
+
+[source,json]
+----
+{
+  "session": {
+    "csrf_token": "abc123def456..."
+  }
+}
+----
+
+**Set-Cookie Header**:
+
+----
+lucid_session={session_id}.{ed25519_signature}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000; Secure
+----
+
+**Errors**:
+
+* `401 Unauthorized` - Invalid username or password
+* `500 Internal Server Error` - Database or signing failure
+
+**Notes**:
+
+* Session cookie valid for 30 days (sliding expiry)
+* CSRF token must be stored by client for mutation requests
+* Session ID is cryptographically signed with Ed25519
+* `Secure` flag only set when API URL starts with https://
+
+---
+
+=== POST /v1/auth/logout
+
+End the current session.
+
+**Headers**:
+
+----
+Cookie: lucid_session={signed_token}
+X-CSRF-Token: {csrf_token_from_login}
+----
+
+**Response** (200 OK):
+
+----
+Logged out successfully
+----
+
+**Set-Cookie Header** (clears cookie):
+
+----
+lucid_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure
+----
+
+**Errors**:
+
+* `401 Unauthorized` - Missing or invalid session cookie
+* `403 Forbidden` - Invalid CSRF token
+* `500 Internal Server Error` - Database failure
+
+**Notes**:
+
+* Deletes session from database
+* Requires both valid session cookie AND CSRF token
+* Cookie clearing must match login cookie flags
+
+---
+
+=== GET /v1/auth/me
+
+Get authenticated user information.
+
+**Headers**:
+
+----
+Cookie: lucid_session={signed_token}
+----
+
+**Response** (200 OK):
+
+[source,json]
+----
+{
+  "id": "507f1f77bcf86cd799439011",
+  "username": "admin",
+  "display_name": "Administrator",
+  "email": "admin@example.com"
+}
+----
+
+**Errors**:
+
+* `401 Unauthorized` - Missing or invalid session cookie
+* `404 Not Found` - User no longer exists (stale session)
+* `500 Internal Server Error` - Database failure
+
+**Notes**:
+
+* Read-only endpoint - no CSRF token required
+* Session `last_used_at` updated on each request
+
+---
+
+== Session Security
+
+=== Cookie Attributes
+
+[cols="1,3"]
+|===
+|Attribute |Purpose
+
+|`HttpOnly`
+|Prevents JavaScript access (XSS protection)
+
+|`SameSite=Lax`
+|Prevents cross-site POST requests (CSRF baseline)
+
+|`Secure`
+|Ensures cookies only sent over HTTPS in production
+
+|`Path=/`
+|Cookie valid for all API endpoints
+
+|`Max-Age=2592000`
+|30-day expiry (2,592,000 seconds)
+|===
+
+=== CSRF Protection
+
+State-changing requests (POST, PUT, PATCH, DELETE) require the `X-CSRF-Token` header:
+
+[source,bash]
+----
+curl -X POST http://localhost:3000/v1/some/endpoint \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: {csrf_token}" \
+  -b cookies.txt \
+  -d '{"data": "value"}'
+----
+
+Read-only requests (GET, HEAD, OPTIONS) do not require CSRF validation.
+
+=== Session Format
+
+Session cookies contain a signed token:
+
+----
+{session_id}.{base64_signature}
+----
+
+* `session_id`: ULID (26 characters, lexicographically sortable)
+* `base64_signature`: Ed25519 signature (URL-safe base64, no padding)
+
+The signature prevents tampering - modifying the session ID invalidates the signature.
+
+=== Session Expiry
+
+Sessions use a sliding expiry model:
+
+* Initial TTL: 30 days from creation
+* On each authenticated request: `last_used_at` updated
+* Sessions checked against `expires_at` during authentication
+* Expired sessions rejected with 401 Unauthorized
+
+=== Session Storage
+
+Sessions stored in MongoDB with schema:
+
+[source,json]
+----
+{
+  "_id": ObjectId("..."),
+  "session_id": "01JBCD...",
+  "user_id": ObjectId("..."),
+  "csrf_token": "abc123...",
+  "created_at": ISODate("2024-01-01T00:00:00Z"),
+  "last_used_at": ISODate("2024-01-02T12:34:56Z"),
+  "expires_at": ISODate("2024-01-31T00:00:00Z")
+}
+----
+
+Index on `session_id` for fast lookups.
+
+== Example: Complete Login Flow
+
+[source,bash]
+----
+# 1. Login and save cookie
+RESPONSE=$(curl -X POST http://localhost:3000/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "secret"}' \
+  -c cookies.txt -s)
+
+# 2. Extract CSRF token
+CSRF_TOKEN=$(echo $RESPONSE | jq -r '.session.csrf_token')
+
+# 3. Make authenticated GET request (no CSRF needed)
+curl http://localhost:3000/v1/hosts \
+  -b cookies.txt
+
+# 4. Make authenticated POST request (CSRF required)
+curl -X POST http://localhost:3000/v1/hosts \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -b cookies.txt \
+  -d '{"hostname": "server01.example.com"}'
+
+# 5. Logout
+curl -X POST http://localhost:3000/v1/auth/logout \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -b cookies.txt
+----
+
+== See Also
+
+* link:AUTH_QUICKREF.adoc[Authentication Quick Reference] - Common patterns
+* link:ARCHITECTURE_AUTH.adoc[Authentication & Authorization Architecture] - System design
+* link:SECURITY_ED25519.adoc[Security Considerations] - Best practices for signing keys

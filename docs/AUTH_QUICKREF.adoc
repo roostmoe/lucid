@@ -1,0 +1,475 @@
+= Authentication Quick Reference
+:toc: left
+:icons: font
+
+Quick reference for common authentication and authorization patterns in Lucid.
+
+For architecture details, see link:ARCHITECTURE_AUTH.adoc[Authentication & Authorization Architecture].
+
+== Session Endpoints
+
+=== Login
+
+Authenticate and create a session:
+
+[source,bash]
+----
+curl -X POST http://localhost:3000/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "secret"}' \
+  -c cookies.txt
+
+# Response (201):
+# {
+#   "session": {
+#     "csrf_token": "abc123..."
+#   }
+# }
+#
+# Cookie set: lucid_session={session_id}.{signature}
+----
+
+Store the CSRF token from the response body - you'll need it for mutations.
+
+=== Logout
+
+End your session:
+
+[source,bash]
+----
+curl -X POST http://localhost:3000/v1/auth/logout \
+  -H "X-CSRF-Token: {csrf_token_from_login}" \
+  -b cookies.txt
+
+# Response (200):
+# Logged out successfully
+----
+
+=== Whoami
+
+Check current user:
+
+[source,bash]
+----
+curl http://localhost:3000/v1/auth/me \
+  -b cookies.txt
+
+# Response (200):
+# {
+#   "id": "...",
+#   "username": "admin",
+#   "display_name": "Administrator",
+#   "email": "admin@example.com"
+# }
+----
+
+=== Using Sessions in Requests
+
+**Read-only requests** (GET):
+[source,bash]
+----
+curl http://localhost:3000/v1/hosts \
+  -b cookies.txt
+----
+
+**Mutating requests** (POST, PUT, DELETE):
+[source,bash]
+----
+curl -X POST http://localhost:3000/v1/hosts \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: {csrf_token}" \
+  -b cookies.txt \
+  -d '{"hostname": "new-host"}'
+----
+
+IMPORTANT: CSRF token required for all POST/PUT/DELETE requests.
+
+== Handler Patterns
+
+=== Require Authentication
+
+Most handlers should require authentication:
+
+[source,rust]
+----
+use crate::auth::extractor::Auth;
+use lucid_common::caller::Permission;
+
+pub async fn delete_host(
+    Auth(caller): Auth,  // ← 401 if not authenticated
+    Path(id): Path<String>,
+) -> Result<(), ApiError> {
+    caller.require(Permission::HostsDelete)?;  // ← 403 if missing permission
+    
+    db.delete_host(&id).await?;
+    Ok(())
+}
+----
+
+=== Optional Authentication
+
+Some endpoints work with or without auth:
+
+[source,rust]
+----
+pub async fn list_hosts(
+    auth: Option<Auth>,  // ← works either way
+) -> Result<Json<Vec<Host>>, ApiError> {
+    let hosts = if let Some(Auth(caller)) = auth {
+        // authenticated: return full data
+        if caller.can(Permission::HostsRead) {
+            db.list_all_hosts().await?
+        } else {
+            db.list_public_hosts().await?
+        }
+    } else {
+        // unauthenticated: return limited data
+        db.list_public_hosts().await?
+    };
+    
+    Ok(Json(hosts))
+}
+----
+
+=== System Operations
+
+Use `Caller::System` for internal operations that bypass auth:
+
+[source,rust]
+----
+pub async fn bootstrap_first_user(db: &Database) -> Result<()> {
+    let system = Caller::System;
+    
+    // System caller bypasses all permission checks
+    create_user(db, system, "admin@example.com").await?;
+    Ok(())
+}
+----
+
+**Use System caller for**:
+
+* Bootstrap operations (first admin user)
+* Database migrations
+* Scheduled background jobs
+* Internal health checks
+
+== Permission Patterns
+
+=== Check Before Acting
+
+Use `can()` for conditional logic:
+
+[source,rust]
+----
+#[derive(Serialize)]
+struct HostResponse {
+    id: String,
+    hostname: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    internal_ip: Option<String>,  // ← sensitive field
+}
+
+pub async fn get_host(
+    Auth(caller): Auth,
+    Path(id): Path<String>,
+) -> Result<Json<HostResponse>, ApiError> {
+    caller.require(Permission::HostsRead)?;
+    
+    let host = db.get_host(&id).await?;
+    
+    // Only include internal IP for users with write access
+    let internal_ip = if caller.can(Permission::HostsWrite) {
+        Some(host.internal_ip)
+    } else {
+        None
+    };
+    
+    Ok(Json(HostResponse {
+        id: host.id,
+        hostname: host.hostname,
+        internal_ip,
+    }))
+}
+----
+
+=== Require and Fail
+
+Use `require()` to enforce permissions:
+
+[source,rust]
+----
+pub async fn update_host(
+    Auth(caller): Auth,
+    Path(id): Path<String>,
+    Json(update): Json<HostUpdate>,
+) -> Result<(), ApiError> {
+    caller.require(Permission::HostsWrite)?;  // ← fails with 403 if missing
+    
+    // safe to update now
+    db.update_host(&id, update).await?;
+    Ok(())
+}
+----
+
+=== Multiple Permissions
+
+Check different permissions for different operations:
+
+[source,rust]
+----
+pub async fn bulk_update(
+    Auth(caller): Auth,
+    Json(ops): Json<Vec<BulkOperation>>,
+) -> Result<(), ApiError> {
+    for op in ops {
+        match op {
+            BulkOperation::Create(host) => {
+                caller.require(Permission::HostsWrite)?;
+                db.create_host(host).await?;
+            }
+            BulkOperation::Delete(id) => {
+                caller.require(Permission::HostsDelete)?;
+                db.delete_host(&id).await?;
+            }
+        }
+    }
+    Ok(())
+}
+----
+
+=== Roles vs Permissions
+
+Prefer permission checks over role checks:
+
+**Good** (flexible, works with future roles):
+[source,rust]
+----
+caller.require(Permission::UsersWrite)?;
+----
+
+**Avoid** (brittle, breaks when you add new roles):
+[source,rust]
+----
+caller.require_role(Role::Admin)?;
+----
+
+Only use role checks when you genuinely need that specific role, not just its permissions.
+
+== Adding Permissions
+
+To add a new permission for a feature:
+
+[source,rust]
+----
+// 1. Add to Permission enum (common/src/caller.rs)
+pub enum Permission {
+    // ... existing
+    ComplianceScansRead,
+    ComplianceScansWrite,
+}
+
+// 2. Add string representation
+impl Permission {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            // ... existing
+            Permission::ComplianceScansRead => "compliance_scans:read",
+            Permission::ComplianceScansWrite => "compliance_scans:write",
+        }
+    }
+}
+
+// 3. Add to roles
+impl Role {
+    pub fn permissions(&self) -> &'static [Permission] {
+        match self {
+            Role::Admin => &[
+                // ... existing
+                Permission::ComplianceScansRead,
+                Permission::ComplianceScansWrite,
+            ],
+            Role::Viewer => &[
+                // ... existing
+                Permission::ComplianceScansRead,
+            ],
+        }
+    }
+}
+
+// 4. Use in handlers
+pub async fn run_scan(
+    Auth(caller): Auth,
+    Path(host_id): Path<String>,
+) -> Result<(), ApiError> {
+    caller.require(Permission::ComplianceScansWrite)?;
+    scanner.run(&host_id).await?;
+    Ok(())
+}
+----
+
+After editing `caller.rs`, run:
+[source,bash]
+----
+cargo fmt  # required by AGENTS.md
+cargo test -p lucid-common caller
+----
+
+== Error Handling
+
+Auth errors map to HTTP status codes:
+
+[cols="2,1,3"]
+|===
+|Error |Status |When to Use
+
+|`CallerError::Unauthorized`
+|401
+|Invalid or missing credentials (handled by extractor)
+
+|`CallerError::Forbidden`
+|403
+|Valid auth but missing permission (from `require()`)
+
+|`CallerError::Anyhow`
+|500
+|Unexpected errors (DB failures, etc.)
+|===
+
+[source,rust]
+----
+// The Auth extractor handles 401s automatically
+Auth(caller): Auth  // ← returns 401 if auth fails
+
+// Your handler code handles 403s
+caller.require(Permission::HostsWrite)?;  // ← returns 403 if forbidden
+----
+
+== Testing
+
+=== Unit Tests
+
+Test permission logic directly:
+
+[source,rust]
+----
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lucid_common::caller::{Caller, Role, Permission};
+
+    fn viewer() -> Caller {
+        Caller::User {
+            id: "test".into(),
+            display_name: "Test Viewer".into(),
+            email: "viewer@example.com".into(),
+            roles: vec![Role::Viewer],
+        }
+    }
+
+    #[test]
+    fn viewer_can_read_hosts() {
+        let caller = viewer();
+        assert!(caller.require(Permission::HostsRead).is_ok());
+    }
+
+    #[test]
+    fn viewer_cannot_delete_hosts() {
+        let caller = viewer();
+        assert!(caller.require(Permission::HostsDelete).is_err());
+    }
+}
+----
+
+=== Integration Tests
+
+Test with actual HTTP requests:
+
+[source,rust]
+----
+#[tokio::test]
+async fn test_delete_without_permission() {
+    let client = TestClient::new().await;
+    let viewer_token = client.login_as_viewer().await;
+
+    let response = client
+        .delete("/api/v1/hosts/123")
+        .bearer_auth(&viewer_token)
+        .send()
+        .await;
+
+    assert_eq!(response.status(), 403);
+}
+----
+
+== Common Mistakes
+
+=== Using System Caller in Handlers
+
+**Don't**:
+[source,rust]
+----
+pub async fn delete_host(Path(id): Path<String>) -> Result<()> {
+    let caller = Caller::System;  // ❌ bypasses all auth!
+    do_delete(&caller, &id).await
+}
+----
+
+**Do**:
+[source,rust]
+----
+pub async fn delete_host(
+    Auth(caller): Auth,  // ✅ requires real auth
+    Path(id): Path<String>,
+) -> Result<()> {
+    caller.require(Permission::HostsDelete)?;
+    do_delete(&caller, &id).await
+}
+----
+
+=== Forgetting Permission Checks
+
+**Don't**:
+[source,rust]
+----
+pub async fn delete_host(
+    Auth(caller): Auth,  // ✅ authenticated
+    Path(id): Path<String>,
+) -> Result<()> {
+    // ❌ no permission check!
+    db.delete_host(&id).await
+}
+----
+
+**Do**:
+[source,rust]
+----
+pub async fn delete_host(
+    Auth(caller): Auth,
+    Path(id): Path<String>,
+) -> Result<()> {
+    caller.require(Permission::HostsDelete)?;  // ✅ check permission
+    db.delete_host(&id).await
+}
+----
+
+=== Using `can()` Instead of `require()`
+
+**Awkward**:
+[source,rust]
+----
+if !caller.can(Permission::HostsWrite) {
+    return Err(ApiError::Forbidden);
+}
+----
+
+**Better**:
+[source,rust]
+----
+caller.require(Permission::HostsWrite)?;
+----
+
+== See Also
+
+* link:ARCHITECTURE_AUTH.adoc[Authentication & Authorization Architecture] - Deep dive into the system
+* link:../AGENTS.md[Agent Guidelines] - Coding standards
+* link:../README.adoc[Main README] - Getting started

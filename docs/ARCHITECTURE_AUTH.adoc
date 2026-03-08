@@ -1,0 +1,582 @@
+= Authentication & Authorization Architecture
+:toc: left
+:icons: font
+
+This document describes Lucid's authentication and authorization system, built around the `Caller` type and Role-Based Access Control (RBAC).
+
+== Overview
+
+Lucid uses a two-stage security model:
+
+1. **Authentication**: Prove who you are (handled by `AuthManager` and providers)
+2. **Authorization**: Prove what you're allowed to do (handled by `Caller` and RBAC)
+
+```
+HTTP Request
+    ↓
+Auth Extractor (axum)
+    ↓
+AuthManager tries providers
+    ↓
+Provider returns Caller
+    ↓
+Handler checks permissions
+    ↓
+Operation executes (or fails)
+```
+
+== Core Types
+
+=== Caller
+
+The `Caller` enum represents an authenticated identity. Every API request has a `Caller` that determines what they can do.
+
+[source,rust]
+----
+pub enum Caller {
+    User { id, display_name, email, roles },
+    Agent { id, name, roles },
+    ServiceAccount { id, name, description, roles },
+    System, // unrestricted internal operations
+}
+----
+
+**Location**: `common/src/caller.rs`
+
+==== Variants
+
+* **User**: Human authenticated via web session. Has display name, email, and assigned roles.
+* **Agent**: Host agent reporting telemetry. Currently has full access but will get agent-specific permissions in future.
+* **ServiceAccount**: API token for automation. Has name, optional description, and assigned roles.
+* **System**: Internal operations that bypass all permission checks. Used for bootstrap, migrations, scheduled tasks.
+
+=== Permission
+
+Fine-grained atomic capabilities. These are the actual actions you can perform.
+
+[source,rust]
+----
+pub enum Permission {
+    // Host management
+    HostsRead,
+    HostsWrite,
+    HostsDelete,
+
+    // User management
+    UsersRead,
+    UsersWrite,
+    UsersDelete,
+
+    // Service account management
+    ServiceAccountsRead,
+    ServiceAccountsWrite,
+    ServiceAccountsDelete,
+}
+----
+
+Permissions follow a `{resource}:{action}` naming pattern:
+
+* **Read**: View resources
+* **Write**: Create and update resources
+* **Delete**: Remove resources
+
+=== Role
+
+Roles bundle permissions together. Instead of assigning 9 individual permissions, you assign one role.
+
+[source,rust]
+----
+pub enum Role {
+    Admin,   // all permissions
+    Viewer,  // read-only permissions
+}
+----
+
+Current roles:
+
+[cols="1,3"]
+|===
+|Role |Permissions
+
+|`Admin`
+|All permissions - full CRUD on hosts, users, and service accounts
+
+|`Viewer`
+|Read-only - can view hosts, users, and service accounts but not modify
+|===
+
+== Session-Based Authentication
+
+Lucid uses session-based authentication for web console users. This provides a secure, stateful authentication mechanism with proper CSRF protection.
+
+=== Session Flow
+
+```
+1. User → POST /v1/auth/login with credentials
+2. API validates credentials against database
+3. API creates session in DB with 30-day TTL
+4. API signs session_id with Ed25519 key
+5. API returns signed token in lucid_session cookie + CSRF token in body
+6. Client stores CSRF token (e.g., localStorage)
+7. Client sends cookie automatically + X-CSRF-Token header for mutations
+8. API validates cookie signature + CSRF token + session existence
+9. API updates session last_used_at (sliding expiry)
+```
+
+=== Login Endpoint
+
+`POST /v1/auth/login`
+
+**Request**:
+[source,json]
+----
+{
+  "username": "admin",
+  "password": "secret"
+}
+----
+
+**Response** (201 Created):
+[source,json]
+----
+{
+  "session": {
+    "csrf_token": "randomly_generated_32_char_string"
+  }
+}
+----
+
+**Cookie** (Set-Cookie header):
+----
+lucid_session={session_id}.{ed25519_signature}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000; Secure
+----
+
+=== Logout Endpoint
+
+`POST /v1/auth/logout`
+
+Requires authentication via session cookie and CSRF token.
+
+**Headers**:
+----
+Cookie: lucid_session={signed_token}
+X-CSRF-Token: {csrf_token_from_login}
+----
+
+**Response** (200 OK):
+----
+Logged out successfully
+----
+
+**Cookie** (clears session):
+----
+lucid_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure
+----
+
+=== Whoami Endpoint
+
+`GET /v1/auth/me`
+
+Returns information about the authenticated user.
+
+**Headers**:
+----
+Cookie: lucid_session={signed_token}
+----
+
+**Response** (200 OK):
+[source,json]
+----
+{
+  "id": "user_id",
+  "username": "admin",
+  "display_name": "Administrator",
+  "email": "admin@example.com"
+}
+----
+
+=== Security Features
+
+* **HttpOnly cookies**: JavaScript cannot access session tokens (XSS protection)
+* **SameSite=Lax**: Cookies not sent on cross-site POST requests (CSRF baseline)
+* **Secure flag**: Cookies only sent over HTTPS in production
+* **CSRF double-submit**: Separate CSRF token required for state-changing requests
+* **Ed25519 signatures**: Session IDs are cryptographically signed to prevent tampering
+* **Server-side validation**: Sessions validated against database on every request
+* **Sliding expiry**: Session `last_used_at` updated on each request, 30-day TTL
+
+=== CSRF Protection Pattern
+
+For read-only requests (GET):
+----
+Cookie: lucid_session={signed_token}
+----
+
+For mutating requests (POST, PUT, DELETE):
+----
+Cookie: lucid_session={signed_token}
+X-CSRF-Token: {csrf_token_from_login}
+----
+
+The CSRF token is validated by extracting the session from the cookie, fetching it from the database, and comparing the provided token against the stored `csrf_token` field.
+
+== Authentication Flow
+
+=== 1. Auth Extractor
+
+API handlers use the `Auth` extractor to require authentication:
+
+[source,rust]
+----
+pub async fn list_hosts(
+    Auth(caller): Auth,  // ← requires authentication
+) -> Result<Json<Vec<Host>>> {
+    caller.require(Permission::HostsRead)?;
+    // ... fetch hosts
+}
+----
+
+**Location**: `api/src/auth/extractor.rs`
+
+The extractor:
+
+1. Runs automatically when the handler is called
+2. Extracts the `Caller` from the request
+3. Returns 401 if authentication fails
+4. Passes the `Caller` to your handler
+
+=== 2. AuthManager
+
+The `AuthManager` coordinates multiple authentication providers:
+
+[source,rust]
+----
+pub struct AuthManager {
+    providers: Vec<Box<dyn AuthProvider>>,
+}
+----
+
+**Location**: `api/src/auth/manager.rs`
+
+It tries each provider in order until one succeeds:
+
+1. Check if provider recognizes the request (has credentials)
+2. If not, skip to next provider
+3. If yes, try to authenticate
+4. On success, return the `Caller`
+5. On failure, return error (stop trying other providers)
+
+=== 3. Auth Providers
+
+Providers implement different authentication schemes:
+
+[source,rust]
+----
+#[async_trait]
+pub trait AuthProvider: Send + Sync {
+    fn scheme(&self) -> &'static str;
+    async fn authenticate(&self, parts: &Parts) -> Result<Caller, AuthError>;
+}
+----
+
+**Location**: `api/src/auth/provider.rs`
+
+==== Session Provider
+
+Authenticates users via signed session tokens in cookies.
+
+**Location**: `api/src/auth/providers/session.rs`
+
+Flow:
+
+1. Extracts `lucid_session` cookie from request
+2. Verifies Ed25519 signature on cookie value
+3. Extracts session ID from signed token
+4. Validates session in database (checks expiry, fetches user)
+5. Returns `Caller::User` with user's roles
+
+**Cookie format**: `{session_id}.{ed25519_signature}`
+
+Session tokens are:
+
+* Signed with Ed25519 to prevent tampering
+* Stored in HttpOnly cookies (XSS protection)
+* Set with SameSite=Lax (baseline CSRF protection)
+* Valid for 30 days (sliding expiry - `last_used_at` updated per request)
+
+Future providers might include:
+
+* API key provider (for service accounts)
+* mTLS provider (for agents)
+* OAuth/OIDC provider (for SSO)
+
+== Authorization Flow
+
+Once authenticated, handlers check permissions:
+
+=== Permission Checks
+
+Use `caller.can()` for conditional logic:
+
+[source,rust]
+----
+if caller.can(Permission::HostsWrite) {
+    // show "edit" button
+}
+----
+
+Use `caller.require()` to enforce permissions:
+
+[source,rust]
+----
+pub async fn delete_host(
+    Auth(caller): Auth,
+    Path(id): Path<String>,
+) -> Result<()> {
+    caller.require(Permission::HostsDelete)?; // ← fails with 403 if missing
+    
+    // safe to delete now
+    db.delete_host(&id).await?;
+    Ok(())
+}
+----
+
+=== Special Cases
+
+**System Caller**: Bypasses all checks
+
+[source,rust]
+----
+let system = Caller::System;
+assert!(system.can(Permission::HostsDelete)); // always true
+----
+
+Use for:
+
+* Bootstrap operations (creating first admin user)
+* Background jobs (scheduled cleanups)
+* Database migrations
+
+**Role Checks**: Less common, used when you need a specific role rather than permission
+
+[source,rust]
+----
+caller.require_role(Role::Admin)?; // only admins allowed
+----
+
+== Creating Callers
+
+=== From Database Models
+
+[source,rust]
+----
+impl DbUser {
+    pub fn to_caller(&self) -> Caller {
+        Caller::User {
+            id: self.id.unwrap().to_string(),
+            display_name: self.display_name.clone(),
+            email: self.email.clone(),
+            roles: vec![Role::Admin], // TODO: fetch from DB
+        }
+    }
+}
+----
+
+**Location**: `db/src/models.rs`
+
+NOTE: Currently hardcodes `Admin` role. Need to implement role storage in database.
+
+=== From Auth Providers
+
+Providers create callers during authentication:
+
+[source,rust]
+----
+async fn authenticate(&self, parts: &Parts) -> Result<Caller, AuthError> {
+    let session_token = extract_cookie(parts)?;
+    let user_id = verify_signature(&session_token)?;
+    let db_user = self.db.fetch_user(&user_id).await?;
+    Ok(db_user.to_caller()) // ← DbUser → Caller
+}
+----
+
+== Adding New Permissions
+
+To add a new permission:
+
+1. **Add to `Permission` enum**:
++
+[source,rust]
+----
+pub enum Permission {
+    // ... existing permissions
+    AuditLogsRead,  // ← new permission
+}
+----
+
+2. **Add string representation**:
++
+[source,rust]
+----
+impl Permission {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            // ... existing
+            Permission::AuditLogsRead => "audit_logs:read",
+        }
+    }
+}
+----
+
+3. **Add to relevant roles**:
++
+[source,rust]
+----
+impl Role {
+    pub fn permissions(&self) -> &'static [Permission] {
+        match self {
+            Role::Admin => &[
+                // ... existing
+                Permission::AuditLogsRead,
+            ],
+            Role::Viewer => &[
+                // ... existing
+                Permission::AuditLogsRead, // viewers can see audit logs
+            ],
+        }
+    }
+}
+----
+
+4. **Use in handlers**:
++
+[source,rust]
+----
+pub async fn list_audit_logs(Auth(caller): Auth) -> Result<Json<Vec<AuditLog>>> {
+    caller.require(Permission::AuditLogsRead)?;
+    // ...
+}
+----
+
+== Adding New Roles
+
+To add a new role:
+
+1. **Add to `Role` enum**:
++
+[source,rust]
+----
+pub enum Role {
+    Admin,
+    Viewer,
+    Operator,  // ← new role
+}
+----
+
+2. **Define permissions**:
++
+[source,rust]
+----
+impl Role {
+    pub fn permissions(&self) -> &'static [Permission] {
+        match self {
+            // ... existing
+            Role::Operator => &[
+                Permission::HostsRead,
+                Permission::HostsWrite,
+                // no delete permissions
+            ],
+        }
+    }
+}
+----
+
+3. **Assign to users** (once role storage is implemented):
++
+[source,rust]
+----
+let user = Caller::User {
+    roles: vec![Role::Operator],
+    // ...
+};
+----
+
+== Testing
+
+The `caller` module includes comprehensive tests:
+
+* Permission inheritance via roles
+* System caller special permissions
+* Error handling for missing permissions
+* Display formatting
+
+Run tests:
+
+[source,bash]
+----
+cargo test -p lucid-common caller
+----
+
+== TODO
+
+=== High Priority
+
+* [ ] Implement role storage in database (currently hardcoded to Admin)
+* [ ] Add API key authentication provider for service accounts
+* [ ] Add agent authentication via mTLS or signed tokens
+
+=== Medium Priority
+
+* [ ] Agent-specific permissions (agents shouldn't be admins)
+* [ ] Role assignment API endpoints
+* [ ] Audit logging for permission denials
+* [ ] Permission inheritance (e.g., `hosts:write` implies `hosts:read`)
+
+=== Low Priority
+
+* [ ] Dynamic permissions (load from database)
+* [ ] Resource-scoped permissions (e.g., "can edit *this* host")
+* [ ] Permission groups (bundle related permissions)
+
+== Migration Notes
+
+The old system used an `ApiCaller` trait with an `Unauthenticated` variant. This has been completely replaced by the `Caller` enum.
+
+**Before**:
+[source,rust]
+----
+enum ApiCaller {
+    User { ... },
+    Unauthenticated,
+}
+----
+
+**After**:
+[source,rust]
+----
+enum Caller {
+    User { ... },
+    // No unauthenticated variant - use Auth extractor instead
+}
+----
+
+If an endpoint needs to handle both authenticated and unauthenticated requests, use `Option<Auth>`:
+
+[source,rust]
+----
+pub async fn list_public_hosts(
+    auth: Option<Auth>,  // ← optional authentication
+) -> Result<Json<Vec<Host>>> {
+    if let Some(Auth(caller)) = auth {
+        // authenticated - return full data
+    } else {
+        // unauthenticated - return public data only
+    }
+}
+----
+
+== See Also
+
+* link:SECURITY_ED25519.adoc[Security Considerations] - Session token signing
+* link:../AGENTS.md[Agent Guidelines] - Coding standards
+* link:../README.adoc[Main README] - Getting started

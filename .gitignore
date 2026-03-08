@@ -158,3 +158,6 @@ Cargo.lock
 
 # Antora Docs
 build/
+
+mise.local.toml
+config/local

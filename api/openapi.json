@@ -1,0 +1,1611 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Lucid API Reference",
+    "contact": {
+      "name": "Roost team",
+      "url": "https://github.com/roostmoe/lucid",
+      "email": "hello@roost.moe"
+    },
+    "license": {
+      "name": "Apache 2.0 License",
+      "url": "https://github.com/roostmoe/lucid/blob/main/LICENSE",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Retrieve the server's public JSON Web Key Set.",
+        "description": "Returns the Ed25519 public key(s) used by this server to sign tokens.\nExternal services can use this endpoint to verify JWTs without needing\na shared secret.\n\nThe key is represented as an OKP (Octet Key Pair) JWK per RFC 8037.\n\n# Example\n\n```bash\ncurl http://localhost:4000/.well-known/jwks.json\n```\n\n```json\n{\n  \"keys\": [\n    {\n      \"kty\": \"OKP\",\n      \"crv\": \"Ed25519\",\n      \"x\": \"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\",\n      \"kid\": \"11qYAYKxCrfV\",\n      \"use\": \"sig\",\n      \"alg\": \"EdDSA\"\n    }\n  ]\n}\n```",
+        "operationId": "get_jwks",
+        "responses": {
+          "200": {
+            "description": "JSON Web Key Set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JwkSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/.well-known/lucid/agent": {
+      "get": {
+        "tags": [
+          "well-known"
+        ],
+        "summary": "GET /.well-known/lucid/agent\nReturns CA certificate information for agents.",
+        "operationId": "get_agent_well_known",
+        "responses": {
+          "200": {
+            "description": "Agent configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWellKnownResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          },
+          "503": {
+            "description": "CA not initialized"
+          }
+        }
+      }
+    },
+    "/.well-known/lucid/server": {
+      "get": {
+        "tags": [
+          "well-known"
+        ],
+        "summary": "GET /.well-known/lucid/agent\nReturns CA certificate information for agents.",
+        "operationId": "get_server_well_known",
+        "responses": {
+          "200": {
+            "description": "Server configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentWellKnownResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/.well-known/openid-configuration": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "OpenID Connect discovery endpoint.",
+        "description": "Returns minimal OIDC configuration needed for JWT verification.\nOnly includes `jwks_uri` pointing to the JWKS endpoint.\n\n# Example\n\n```bash\ncurl http://localhost:4000/.well-known/openid-configuration\n```\n\n```json\n{\n  \"jwks_uri\": \"http://localhost:4000/.well-known/jwks.json\"\n}\n```",
+        "operationId": "get_openid_configuration",
+        "responses": {
+          "200": {
+            "description": "OpenID Connect discovery document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenIdConfiguration"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/activation-keys": {
+      "get": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "list_activation_keys",
+        "responses": {
+          "200": {
+            "description": "List of activation keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedList_ActivationKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "create_activation_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActivationKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Activation key created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActivationKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/activation-keys/{id}": {
+      "get": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "get_activation_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "ulid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activation key details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationKey"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "activation-keys"
+        ],
+        "operationId": "delete_activation_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "ulid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Activation key deleted"
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/register": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "POST /api/v1/agents/register",
+        "description": "Register a new agent using an activation key JWT.",
+        "operationId": "register_agent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Agent registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterAgentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "409": {
+            "description": "Activation key already used"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          },
+          "503": {
+            "description": "CA not initialized"
+          }
+        },
+        "security": [
+          {
+            "activation_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth",
+          "console_sessions"
+        ],
+        "summary": "Authenticate user and create session.",
+        "description": "This endpoint validates user credentials and creates a new session stored in the database.\nOn success, it returns a session cookie and a CSRF token.\n\n# Flow\n\n1. Validates username/password against database\n2. Generates unique session_id (ULID) and csrf_token (32 random chars)\n3. Creates session in database with 30-day TTL\n4. Signs session_id with Ed25519 key\n5. Returns signed token in `lucid_session` cookie + CSRF token in response body\n\n# Cookie Format\n\n- Name: `lucid_session`\n- Value: `{session_id}.{ed25519_signature}`\n- Flags: HttpOnly, SameSite=Lax, Path=/, Max-Age=2592000 (30 days)\n- Secure: Only set when `public_url` starts with https://\n\n# CSRF Token\n\nThe CSRF token must be stored by the client (e.g., in memory or localStorage) and sent\nin the `X-CSRF-Token` header for all state-changing requests (POST, PUT, DELETE).\n\n# Example\n\n```bash\ncurl -X POST http://localhost:3000/v1/auth/login \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"username\": \"admin\", \"password\": \"secret\"}' \\\n  -c cookies.txt\n```\n\n# Errors\n\n- 401 Unauthorized: Invalid username or password\n- 500 Internal Server Error: Database or signing failure",
+        "operationId": "auth_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthLoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth",
+          "console_sessions"
+        ],
+        "summary": "End the current session.",
+        "description": "This endpoint deletes the user's session from the database and clears the session cookie.\nRequires both session cookie authentication AND the CSRF token.\n\n# Flow\n\n1. Extracts and verifies session cookie from request\n2. Validates CSRF token (via Auth extractor)\n3. Deletes session from database\n4. Returns cookie with Max-Age=0 to clear it from browser\n\n# Security\n\nThis is a state-changing operation, so it requires CSRF protection. The session cookie\nalone is not sufficient - the CSRF token must also be provided.\n\n# Example\n\n```bash\ncurl -X POST http://localhost:3000/v1/auth/logout \\\n  -H \"X-CSRF-Token: {csrf_token_from_login}\" \\\n  -b cookies.txt\n```\n\n# Errors\n\n- 401 Unauthorized: Missing or invalid session cookie\n- 403 Forbidden: Invalid CSRF token\n- 500 Internal Server Error: Database failure",
+        "operationId": "auth_logout",
+        "responses": {
+          "200": {
+            "description": "Successful logout"
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get information about the authenticated user.",
+        "description": "Returns the current user's profile information including ID, username, display name,\nand email. Requires session cookie authentication (no CSRF token needed for GET requests).\n\n# Example\n\n```bash\ncurl http://localhost:3000/v1/auth/me \\\n  -b cookies.txt\n```\n\n# Response\n\n```json\n{\n  \"id\": \"user_object_id\",\n  \"username\": \"admin\",\n  \"display_name\": \"Administrator\",\n  \"email\": \"admin@example.com\"\n}\n```\n\n# Errors\n\n- 401 Unauthorized: Missing or invalid session cookie\n- 404 Not Found: User no longer exists in database (stale session)\n- 500 Internal Server Error: Database failure",
+        "operationId": "auth_whoami",
+        "responses": {
+          "200": {
+            "description": "User information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/cas": {
+      "get": {
+        "tags": [
+          "cas"
+        ],
+        "operationId": "list_cas",
+        "responses": {
+          "200": {
+            "description": "List of certificate authorities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedList_Ca"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cas"
+        ],
+        "summary": "Generate a new self-signed Ed25519 CA certificate and store it.",
+        "operationId": "generate_ca",
+        "responses": {
+          "201": {
+            "description": "Certificate authority generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ca"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/cas/import": {
+      "post": {
+        "tags": [
+          "cas"
+        ],
+        "summary": "Import an existing CA certificate and private key.",
+        "operationId": "import_ca",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Certificate authority imported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ca"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/cas/{id}": {
+      "get": {
+        "tags": [
+          "cas"
+        ],
+        "operationId": "get_ca",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "ulid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Certificate authority details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ca"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cas"
+        ],
+        "operationId": "delete_ca",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "ulid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Certificate authority deleted"
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/hosts": {
+      "get": {
+        "tags": [
+          "hosts"
+        ],
+        "operationId": "list_hosts",
+        "responses": {
+          "200": {
+            "description": "List of hosts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedList_Host"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/v1/hosts/{id}": {
+      "get": {
+        "tags": [
+          "hosts"
+        ],
+        "operationId": "get_host",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "ulid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved host",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Host"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Client or validation error"
+          },
+          "401": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Not found"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ApiErrorResponse",
+            "summary": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivationKey": {
+        "type": "object",
+        "description": "An activation key used to bootstrap host agent configuration.",
+        "required": [
+          "id",
+          "key_id",
+          "description",
+          "used",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the key was created"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description"
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "Internal database ID"
+          },
+          "key_id": {
+            "type": "string",
+            "description": "User-provided key identifier"
+          },
+          "used": {
+            "type": "boolean",
+            "description": "Whether or not the key has been used to register an agent"
+          }
+        }
+      },
+      "AgentWellKnownResponse": {
+        "type": "object",
+        "required": [
+          "server_version",
+          "cas"
+        ],
+        "properties": {
+          "cas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CaInfoResponse"
+            }
+          },
+          "server_version": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "description": "An error response for an API endpoint. This is used to return errors to the\nclient in a consistent format.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "An optional error code that can be used to identify the type of error\nthat occurred."
+          },
+          "details": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "A human-readable message describing the error that occurred."
+          }
+        }
+      },
+      "AuthLoginParams": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "The password of the user to authenticate as."
+          },
+          "username": {
+            "type": "string",
+            "description": "The username or email of the user to authenticate as."
+          }
+        }
+      },
+      "AuthLoginResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "The session cookie for the authenticated user. This cookie should be\nincluded in subsequent requests to authenticate the user.",
+            "required": [
+              "csrf_token",
+              "token_type"
+            ],
+            "properties": {
+              "csrf_token": {
+                "type": "string",
+                "description": "CSRF token that must be included in X-CSRF-Token header for mutating requests"
+              },
+              "token_type": {
+                "type": "string",
+                "enum": [
+                  "Session"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The access token for the authenticated user. This token should be\nincluded in the `Authorization` header of subsequent requests to\nauthenticate the user.",
+            "required": [
+              "access_token",
+              "refresh_token",
+              "expires_in",
+              "token_type"
+            ],
+            "properties": {
+              "access_token": {
+                "type": "string",
+                "description": "The access token for the authenticated user."
+              },
+              "expires_in": {
+                "type": "integer",
+                "format": "int64",
+                "description": "How long the token is valid for, in seconds. After this time has\nelapsed, the user will need to use the refresh token to obtain a\nnew access token."
+              },
+              "refresh_token": {
+                "type": "string",
+                "description": "The refresh token for the user's new session."
+              },
+              "token_type": {
+                "type": "string",
+                "enum": [
+                  "Bearer"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Response for the login endpoint."
+      },
+      "Ca": {
+        "type": "object",
+        "description": "A certificate authority managed by Lucid.",
+        "required": [
+          "id",
+          "cert_pem",
+          "fingerprint",
+          "created_at"
+        ],
+        "properties": {
+          "cert_pem": {
+            "type": "string",
+            "description": "CA certificate in PEM format"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this CA was created"
+          },
+          "fingerprint": {
+            "type": "string",
+            "description": "SHA-256 fingerprint of the certificate (format: `sha256:<hex>`)"
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "Internal database ID"
+          }
+        }
+      },
+      "CaInfoResponse": {
+        "type": "object",
+        "required": [
+          "cert_pem",
+          "fingerprint",
+          "issued_at",
+          "expires_at"
+        ],
+        "properties": {
+          "cert_pem": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateActivationKeyRequest": {
+        "type": "object",
+        "description": "Request body for creating an activation key.",
+        "required": [
+          "key_id",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Human-readable description"
+          },
+          "key_id": {
+            "type": "string",
+            "description": "User-provided identifier for this key"
+          }
+        }
+      },
+      "CreateActivationKeyResponse": {
+        "type": "object",
+        "description": "Response for activation key creation - includes the JWT token.",
+        "required": [
+          "key",
+          "token"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ActivationKey",
+            "description": "The created activation key metadata"
+          },
+          "token": {
+            "type": "string",
+            "description": "The JWT token - only returned on creation, store it securely!"
+          }
+        }
+      },
+      "Host": {
+        "type": "object",
+        "required": [
+          "id",
+          "hostname",
+          "os_id",
+          "os_name",
+          "os_version",
+          "architecture",
+          "ifaces",
+          "created_at",
+          "last_seen_at",
+          "updated_at"
+        ],
+        "properties": {
+          "architecture": {
+            "type": "string",
+            "description": "The CPU architecture of the host, read from `uname -m`."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hostname": {
+            "type": "string",
+            "description": "Hostname of the machine. This is a human-readable identifier for the\nhost, and is not guaranteed to be unique."
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "The unique identifier for this host."
+          },
+          "ifaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetworkInterface"
+            },
+            "description": "Network interfaces associated with this host. This is a one-to-many\nrelationship, as a host can have multiple network interfaces."
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "os_id": {
+            "type": "string",
+            "description": "The ID of the host's operating system, read from /etc/os-release."
+          },
+          "os_name": {
+            "type": "string",
+            "description": "The name of the host's operating system, read from /etc/os-release."
+          },
+          "os_version": {
+            "type": "string",
+            "description": "The version of the host's operating system, read from /etc/os-release."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportCaRequest": {
+        "type": "object",
+        "description": "Request body for importing an existing certificate authority.",
+        "required": [
+          "cert_pem",
+          "private_key_pem"
+        ],
+        "properties": {
+          "cert_pem": {
+            "type": "string",
+            "description": "PEM-encoded CA certificate."
+          },
+          "private_key_pem": {
+            "type": "string",
+            "description": "PEM-encoded private key for the CA certificate (will be encrypted at\nrest using the server's `LUCID_CA_ENCRYPTION_KEY`)."
+          }
+        }
+      },
+      "Jwk": {
+        "type": "object",
+        "description": "A single JSON Web Key representing an OKP (Octet Key Pair) Ed25519 public key.",
+        "required": [
+          "kty",
+          "crv",
+          "x",
+          "kid",
+          "use",
+          "alg"
+        ],
+        "properties": {
+          "alg": {
+            "type": "string",
+            "description": "Algorithms this key supports — `\"EdDSA\"` for Ed25519."
+          },
+          "crv": {
+            "type": "string",
+            "description": "Curve — always `\"Ed25519\"`."
+          },
+          "kid": {
+            "type": "string",
+            "description": "Key ID — a base64url-encoded prefix of the public key bytes,\nused to identify which key was used to sign a token."
+          },
+          "kty": {
+            "type": "string",
+            "description": "Key type — always `\"OKP\"` for Ed25519 keys (RFC 8037)."
+          },
+          "use": {
+            "type": "string",
+            "description": "Intended use of the key. `\"sig\"` indicates this key is for signing."
+          },
+          "x": {
+            "type": "string",
+            "description": "Base64url-encoded public key bytes (32 bytes for Ed25519)."
+          }
+        }
+      },
+      "JwkSet": {
+        "type": "object",
+        "description": "The JSON Web Key Set response, containing one or more public keys.",
+        "required": [
+          "keys"
+        ],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Jwk"
+            }
+          }
+        }
+      },
+      "NetworkInterface": {
+        "type": "object",
+        "required": [
+          "id",
+          "iface",
+          "state",
+          "ip_addrs"
+        ],
+        "properties": {
+          "host_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "ulid",
+            "description": "The unique identifier for the host that this network interface is\nassociated with."
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "The unique identifier for this network interface."
+          },
+          "iface": {
+            "type": "string",
+            "description": "The name of the network interface."
+          },
+          "ip_addrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The IP addresses associated with this network interface."
+          },
+          "state": {
+            "$ref": "#/components/schemas/NetworkInterfaceState",
+            "description": "The state of the network interface. This can be \"up\", \"down\", or\n\"unknown\"."
+          }
+        }
+      },
+      "NetworkInterfaceState": {
+        "type": "string",
+        "enum": [
+          "Up",
+          "Down",
+          "Unknown"
+        ]
+      },
+      "OpenIdConfiguration": {
+        "type": "object",
+        "description": "OpenID Connect discovery response (minimal, for JWT verification only).",
+        "required": [
+          "jwks_uri"
+        ],
+        "properties": {
+          "jwks_uri": {
+            "type": "string",
+            "description": "URL to the JWKS endpoint for retrieving public keys."
+          }
+        }
+      },
+      "PaginatedList_ActivationKey": {
+        "type": "object",
+        "description": "Parameters for paginating through a list of records. This is used by the\nvarious list endpoints to allow clients to paginate through large sets of\nrecords.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "An activation key used to bootstrap host agent configuration.",
+              "required": [
+                "id",
+                "key_id",
+                "description",
+                "used",
+                "created_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the key was created"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Human-readable description"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "ulid",
+                  "description": "Internal database ID"
+                },
+                "key_id": {
+                  "type": "string",
+                  "description": "User-provided key identifier"
+                },
+                "used": {
+                  "type": "boolean",
+                  "description": "Whether or not the key has been used to register an agent"
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The maximum number of results to return.",
+            "minimum": 0
+          },
+          "next_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The next page token, if any. This is acquired by requesting a paginated\nset of records and looking at the `next_token` or `prev_token` field."
+          }
+        }
+      },
+      "PaginatedList_Ca": {
+        "type": "object",
+        "description": "Parameters for paginating through a list of records. This is used by the\nvarious list endpoints to allow clients to paginate through large sets of\nrecords.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A certificate authority managed by Lucid.",
+              "required": [
+                "id",
+                "cert_pem",
+                "fingerprint",
+                "created_at"
+              ],
+              "properties": {
+                "cert_pem": {
+                  "type": "string",
+                  "description": "CA certificate in PEM format"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When this CA was created"
+                },
+                "fingerprint": {
+                  "type": "string",
+                  "description": "SHA-256 fingerprint of the certificate (format: `sha256:<hex>`)"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "ulid",
+                  "description": "Internal database ID"
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The maximum number of results to return.",
+            "minimum": 0
+          },
+          "next_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The next page token, if any. This is acquired by requesting a paginated\nset of records and looking at the `next_token` or `prev_token` field."
+          }
+        }
+      },
+      "PaginatedList_Host": {
+        "type": "object",
+        "description": "Parameters for paginating through a list of records. This is used by the\nvarious list endpoints to allow clients to paginate through large sets of\nrecords.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "hostname",
+                "os_id",
+                "os_name",
+                "os_version",
+                "architecture",
+                "ifaces",
+                "created_at",
+                "last_seen_at",
+                "updated_at"
+              ],
+              "properties": {
+                "architecture": {
+                  "type": "string",
+                  "description": "The CPU architecture of the host, read from `uname -m`."
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "hostname": {
+                  "type": "string",
+                  "description": "Hostname of the machine. This is a human-readable identifier for the\nhost, and is not guaranteed to be unique."
+                },
+                "id": {
+                  "type": "string",
+                  "format": "ulid",
+                  "description": "The unique identifier for this host."
+                },
+                "ifaces": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NetworkInterface"
+                  },
+                  "description": "Network interfaces associated with this host. This is a one-to-many\nrelationship, as a host can have multiple network interfaces."
+                },
+                "last_seen_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "os_id": {
+                  "type": "string",
+                  "description": "The ID of the host's operating system, read from /etc/os-release."
+                },
+                "os_name": {
+                  "type": "string",
+                  "description": "The name of the host's operating system, read from /etc/os-release."
+                },
+                "os_version": {
+                  "type": "string",
+                  "description": "The version of the host's operating system, read from /etc/os-release."
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The maximum number of results to return.",
+            "minimum": 0
+          },
+          "next_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The next page token, if any. This is acquired by requesting a paginated\nset of records and looking at the `next_token` or `prev_token` field."
+          }
+        }
+      },
+      "RegisterAgentRequest": {
+        "type": "object",
+        "description": "Request body for agent registration.",
+        "required": [
+          "csr_pem",
+          "hostname"
+        ],
+        "properties": {
+          "csr_pem": {
+            "type": "string",
+            "description": "CSR in PEM format"
+          },
+          "hostname": {
+            "type": "string",
+            "description": "Hostname of the agent"
+          }
+        }
+      },
+      "RegisterAgentResponse": {
+        "type": "object",
+        "description": "Response body for a successful agent registration.",
+        "required": [
+          "agent_id",
+          "certificate_pem",
+          "ca_certificate_pem",
+          "expires_at",
+          "api_base_url"
+        ],
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "description": "Agent UUID (ObjectId as hex string)"
+          },
+          "api_base_url": {
+            "type": "string",
+            "description": "API base URL for future requests"
+          },
+          "ca_certificate_pem": {
+            "type": "string",
+            "description": "CA certificate in PEM format"
+          },
+          "certificate_pem": {
+            "type": "string",
+            "description": "Signed certificate in PEM format"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Certificate expiration time"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "email",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "The user's display name."
+          },
+          "email": {
+            "type": "string",
+            "description": "The user's email address."
+          },
+          "id": {
+            "type": "string",
+            "format": "ulid",
+            "description": "The unique identifier for this user."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}
