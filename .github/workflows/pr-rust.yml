@@ -81,7 +81,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
 
+      - name: Generate signing key
+        run: openssl genpkey -algorithm ED25519 -out signing_key.pem
+
       - name: Generate OpenAPI schema
+        env:
+          LUCID_API_SIGNING_KEY_FILE: signing_key.pem
         run: cargo run --bin lucid-api -- --dump-openapi > /tmp/openapi.json
 
       - name: Check schema is up to date
