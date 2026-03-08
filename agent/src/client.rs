@@ -43,16 +43,16 @@ impl ApiClient {
         cert_pem: Option<String>,
         ca_cert_pem: Option<String>,
     ) -> Result<Self, ApiClientError> {
-        let mut api_client = ApiClient { api_url, ..Default::default() };
+        let mut api_client = ApiClient {
+            api_url,
+            ..Default::default()
+        };
 
         let mut client_builder =
             Client::builder().user_agent(format!("lucid-agent/{}", env!("CARGO_PKG_VERSION")));
 
-        if let (
-            Some(key_pem),
-            Some(cert_pem),
-            Some(ca_cert_pem)
-        ) = (key_pem, cert_pem, ca_cert_pem) {
+        if let (Some(key_pem), Some(cert_pem), Some(ca_cert_pem)) = (key_pem, cert_pem, ca_cert_pem)
+        {
             let identity = Identity::from_pem(
                 &(key_pem
                     .into_bytes()
