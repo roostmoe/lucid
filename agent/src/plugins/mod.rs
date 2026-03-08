@@ -14,6 +14,7 @@ pub struct TaskEnvelope {
     pub ack_tx: Option<oneshot::Sender<TaskResult>>,
 }
 
+#[allow(dead_code)]
 pub struct PluginContext {
     pub config: AgentConfig,
     pub api_client: ApiClient,
@@ -53,6 +54,7 @@ pub trait Plugin: Send + Sync + 'static {
 
 #[async_trait]
 pub trait ServicePlugin: Send + Sync + 'static {
+    #[allow(dead_code)]
     fn id(&self) -> &'static str;
 
     async fn run(

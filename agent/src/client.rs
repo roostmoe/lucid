@@ -11,6 +11,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ApiClientError {
+    #[allow(dead_code)]
     #[error("Missing credentials for API client")]
     MissingCredentials,
 
@@ -42,24 +43,26 @@ impl ApiClient {
         cert_pem: Option<String>,
         ca_cert_pem: Option<String>,
     ) -> Result<Self, ApiClientError> {
-        let mut api_client = ApiClient::default();
-        api_client.api_url = api_url;
+        let mut api_client = ApiClient { api_url, ..Default::default() };
 
         let mut client_builder =
             Client::builder().user_agent(format!("lucid-agent/{}", env!("CARGO_PKG_VERSION")));
 
-        if key_pem.is_some() && cert_pem.is_some() && ca_cert_pem.is_some() {
+        if let (
+            Some(key_pem),
+            Some(cert_pem),
+            Some(ca_cert_pem)
+        ) = (key_pem, cert_pem, ca_cert_pem) {
             let identity = Identity::from_pem(
                 &(key_pem
-                    .unwrap()
                     .into_bytes()
                     .into_iter()
-                    .chain(cert_pem.unwrap().into_bytes())
+                    .chain(cert_pem.into_bytes())
                     .collect::<Vec<u8>>()),
             )
             .map_err(ApiClientError::IdentityError)?;
 
-            let cert = Certificate::from_pem(&ca_cert_pem.unwrap().into_bytes())
+            let cert = Certificate::from_pem(&ca_cert_pem.into_bytes())
                 .map_err(ApiClientError::IdentityError)?;
 
             client_builder = client_builder
@@ -77,6 +80,7 @@ impl ApiClient {
         Ok(api_client)
     }
 
+    #[allow(dead_code)]
     async fn get<TResult>(&self, path: &str) -> Result<TResult, ApiClientError>
     where
         TResult: serde::de::DeserializeOwned,

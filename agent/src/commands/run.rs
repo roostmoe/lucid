@@ -39,10 +39,12 @@ impl AgentDaemon {
         })
     }
 
+    #[allow(dead_code)]
     pub fn register_plugin(&mut self, plugin: impl Plugin) {
         self.scheduled.push(Box::new(plugin));
     }
 
+    #[allow(dead_code)]
     pub fn register_service(&mut self, service: impl ServicePlugin) {
         self.services.push(Box::new(service));
     }
@@ -56,7 +58,7 @@ impl AgentDaemon {
 
         // drain services into Arc so we can move owned values into tasks
         let services: Vec<Arc<dyn ServicePlugin>> =
-            self.services.drain(..).map(|s| Arc::from(s)).collect();
+            self.services.drain(..).map(Arc::from).collect();
 
         for service in services {
             let task_tx = self.task_tx.clone();

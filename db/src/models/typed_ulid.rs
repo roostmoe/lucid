@@ -16,10 +16,6 @@ impl DbUlid {
         Ulid::from_string(s).ok().map(DbUlid)
     }
 
-    pub fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-
     pub fn inner(&self) -> &Ulid {
         &self.0
     }

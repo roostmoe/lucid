@@ -13,7 +13,7 @@ pub fn create_csr(key_pair: &KeyPair, hostname: &str) -> Result<String, anyhow::
         .serialize_request(key_pair)
         .map_err(|e| anyhow::anyhow!("Failed to create CSR: {}", e))?;
 
-    Ok(csr
+    csr
         .pem()
-        .map_err(|e| anyhow::anyhow!("Failed to encode CSR: {}", e))?)
+        .map_err(|e| anyhow::anyhow!("Failed to encode CSR: {}", e))
 }

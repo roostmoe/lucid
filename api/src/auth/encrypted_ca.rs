@@ -181,17 +181,17 @@ pub async fn generate_ca(
     force: bool,
 ) -> Result<CaInfo, CaError> {
     // Check if CA exists
-    if let Some(_) = CaStore::list(storage, Caller::System)
+    if CaStore::list(storage, Caller::System)
         .await
         .map_err(|e| CaError::Storage(e.to_string()))?
         .into_iter()
         .next()
+        .is_some()
+        && !force
     {
-        if !force {
-            return Err(CaError::Generation(
-                "CA already exists. Use --force to overwrite.".into(),
-            ));
-        }
+        return Err(CaError::Generation(
+            "CA already exists. Use --force to overwrite.".into(),
+        ));
     }
 
     // Generate Ed25519 keypair
