@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use bson::serde_helpers::datetime::FromChrono04DateTime;
+use chrono::{DateTime, Utc};
 use lucid_common::views::Host;
 use serde::{Deserialize, Serialize};
 

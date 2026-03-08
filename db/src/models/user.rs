@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use bson::serde_helpers::datetime::FromChrono04DateTime;
 use chrono::{DateTime, Utc};
-use lucid_common::{caller::{Caller, Role}, views::User};
+use lucid_common::{
+    caller::{Caller, Role},
+    views::User,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::models::DbUlid;
@@ -59,5 +62,3 @@ impl From<DbUser> for User {
         }
     }
 }
-
-

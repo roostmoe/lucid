@@ -8,11 +8,7 @@ use utoipa::ToSchema;
 pub trait CertificateAuthority: Send + Sync {
     /// Sign a CSR and return a PEM-encoded certificate valid for 24 hours.
     /// The CN is set to the agent_id.
-    async fn sign_csr(
-        &self,
-        csr_pem: &str,
-        agent_id: Ulid,
-    ) -> Result<SignedCertificate, CaError>;
+    async fn sign_csr(&self, csr_pem: &str, agent_id: Ulid) -> Result<SignedCertificate, CaError>;
 
     /// Get the CA certificate in PEM format.
     async fn get_ca_cert_pem(&self) -> Result<String, CaError>;

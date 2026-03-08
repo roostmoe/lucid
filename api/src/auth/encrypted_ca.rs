@@ -49,11 +49,7 @@ impl EncryptedCa {
     /// Decrypt the CA private key from storage.
     async fn decrypt_private_key(&self, ca: &DbCa) -> Result<KeyPair, CaError> {
         // Use CA ID as AAD to prevent ciphertext transplantation
-        let aad = ca
-            .id
-            .inner()
-            .to_bytes()
-            .to_vec();
+        let aad = ca.id.inner().to_bytes().to_vec();
 
         let private_key_pem = aes::decrypt(&self.encryption_key, &ca.encrypted_private_key, &aad)
             .map_err(|e| CaError::Decryption(e.to_string()))?;
@@ -68,11 +64,7 @@ impl EncryptedCa {
 
 #[async_trait]
 impl CertificateAuthority for EncryptedCa {
-    async fn sign_csr(
-        &self,
-        csr_pem: &str,
-        agent_id: Ulid,
-    ) -> Result<SignedCertificate, CaError> {
+    async fn sign_csr(&self, csr_pem: &str, agent_id: Ulid) -> Result<SignedCertificate, CaError> {
         // Load CA from store
         let ca = CaStore::list(self.storage.as_ref(), Caller::System)
             .await
@@ -247,9 +239,12 @@ pub async fn generate_ca(
     let ca_id = Ulid::new();
 
     // Encrypt private key
-    let encrypted_private_key =
-        aes::encrypt(encryption_key, private_key_pem.as_bytes(), &ca_id.to_bytes())
-            .map_err(|e| CaError::Encryption(e.to_string()))?;
+    let encrypted_private_key = aes::encrypt(
+        encryption_key,
+        private_key_pem.as_bytes(),
+        &ca_id.to_bytes(),
+    )
+    .map_err(|e| CaError::Encryption(e.to_string()))?;
 
     // Create DbCa
     let db_ca = DbCa {

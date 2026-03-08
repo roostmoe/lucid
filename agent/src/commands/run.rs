@@ -5,7 +5,9 @@ use tokio::{sync::mpsc, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    client::ApiClient, config::AgentConfig, plugins::{Plugin, PluginContext, ServicePlugin, TaskEnvelope}
+    client::ApiClient,
+    config::AgentConfig,
+    plugins::{Plugin, PluginContext, ServicePlugin, TaskEnvelope},
 };
 
 pub struct AgentDaemon {
@@ -53,18 +55,14 @@ impl AgentDaemon {
         });
 
         // drain services into Arc so we can move owned values into tasks
-        let services: Vec<Arc<dyn ServicePlugin>> = self.services
-            .drain(..)
-            .map(|s| Arc::from(s))
-            .collect();
+        let services: Vec<Arc<dyn ServicePlugin>> =
+            self.services.drain(..).map(|s| Arc::from(s)).collect();
 
         for service in services {
             let task_tx = self.task_tx.clone();
             let shutdown = self.shutdown.clone();
             let ctx = ctx.clone();
-            join_set.spawn(async move {
-                service.run(&ctx, task_tx, shutdown).await
-            });
+            join_set.spawn(async move { service.run(&ctx, task_tx, shutdown).await });
         }
 
         for plugin in &self.scheduled {
@@ -90,7 +88,10 @@ impl AgentDaemon {
         }
 
         let plugins: Arc<HashMap<String, Box<dyn Plugin>>> = Arc::new(
-            self.scheduled.into_iter().map(|p| (p.id().to_string(), p)).collect()
+            self.scheduled
+                .into_iter()
+                .map(|p| (p.id().to_string(), p))
+                .collect(),
         );
 
         join_set.spawn(async move {

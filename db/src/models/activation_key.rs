@@ -23,11 +23,7 @@ pub struct DbActivationKey {
 
 impl DbActivationKey {
     pub fn new(key_id: String, description: String) -> Self {
-        Self::new_with_id(
-            DbUlid::new(),
-            key_id,
-            description,
-        )
+        Self::new_with_id(DbUlid::new(), key_id, description)
     }
 
     pub fn new_with_id(id: DbUlid, key_id: String, description: String) -> Self {

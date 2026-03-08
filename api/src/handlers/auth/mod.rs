@@ -72,8 +72,9 @@ pub async fn auth_login(
 
     // 2. Extract user_id from Caller
     let user_id = match &caller {
-        Caller::User { id, .. } => Ulid::from_str(id)
-            .map_err(|e| anyhow::anyhow!("invalid user id: {}", e))?,
+        Caller::User { id, .. } => {
+            Ulid::from_str(id).map_err(|e| anyhow::anyhow!("invalid user id: {}", e))?
+        }
         _ => return Err(anyhow::anyhow!("expected user caller").into()),
     };
 
@@ -256,8 +257,8 @@ pub async fn auth_whoami(
         caller.clone(),
         Ulid::from_string(caller.id())?.into(),
     )
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("user not found"))?;
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("user not found"))?;
 
     Ok(Json(user.into()))
 }

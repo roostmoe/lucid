@@ -47,11 +47,28 @@ pub struct DbAgent {
 }
 
 impl DbAgent {
-    pub fn new(name: String, host_id: DbUlid, public_key_pem: String, certificate_pem: String) -> Self {
-        Self::new_with_id(DbUlid::new(), name, host_id, public_key_pem, certificate_pem)
+    pub fn new(
+        name: String,
+        host_id: DbUlid,
+        public_key_pem: String,
+        certificate_pem: String,
+    ) -> Self {
+        Self::new_with_id(
+            DbUlid::new(),
+            name,
+            host_id,
+            public_key_pem,
+            certificate_pem,
+        )
     }
 
-    pub fn new_with_id(id: DbUlid, name: String, host_id: DbUlid, public_key_pem: String, certificate_pem: String) -> Self {
+    pub fn new_with_id(
+        id: DbUlid,
+        name: String,
+        host_id: DbUlid,
+        public_key_pem: String,
+        certificate_pem: String,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id,
